@@ -9,7 +9,7 @@
     "moduleResolution": "node",
     "allowJs": true,
     "strictNullChecks": true,
-		"resolveJsonModule": true,
+	"resolveJsonModule": true,
     "skipLibCheck": true,
   },
   "exclude": [

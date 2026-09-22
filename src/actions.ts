@@ -13,7 +13,7 @@ const path = requireNativeModule('path');
 
 const export_action = createAction(`${PACKAGE.name}:export_vs`, {
     name: 'Export into VS Format',
-    icon: 'fa-cookie-bite',
+    icon: 'icon.png',
     condition() {
         return is_vs_project(Project);
     },
@@ -51,7 +51,7 @@ MenuBar.addAction(export_action, 'file.export');
 
 const import_action = createAction(`${PACKAGE.name}:import_vs`, {
     name: 'Import from VS Format',
-    icon: 'fa-cookie-bite',
+    icon: 'icon.png',
     condition() {
         return is_vs_project(Project);
     },
@@ -69,7 +69,7 @@ MenuBar.addAction(import_action, 'file.import');
 
 const import_backdrop_action = createAction(`${PACKAGE.name}:import_backdrop_action`, {
     name: 'Import Backdrop from VS Format',
-    icon: 'fa-cookie-bite',
+    icon: 'icon.png',
     condition() {
         return is_vs_project(Project);
     },

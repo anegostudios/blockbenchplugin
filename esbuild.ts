@@ -7,10 +7,10 @@ if (process.argv.includes("--mode=dev")) {
 }
 
 const CONFIG: esbuild.BuildOptions = {
-    entryPoints: ["./src/vs_plugin.ts"],
+    entryPoints: ["./src/vintagestory.ts"],
     bundle: true,
     platform: "node",
-    outfile: "./dist/vs_plugin.js",
+    outfile: "./dist/vintagestory.js",
     plugins: [
 
     ],
@@ -19,7 +19,7 @@ const CONFIG: esbuild.BuildOptions = {
 
 const PROD_CONFIG: esbuild.BuildOptions = {
     ...CONFIG,
-    minify: true,
+    minify: false,
 };
 
 const DEV_CONFIG: esbuild.BuildOptions = {

@@ -27,7 +27,7 @@ import "./panels/vs_face_panel";
 
 BBPlugin.register(PACKAGE.name, {
     title: PACKAGE.title,
-    icon: 'fa-cookie-bite',
+    icon: 'icon.png',
     author: PACKAGE.author.name,
     contributors: PACKAGE.contributors.map(x => x.name),
     description: PACKAGE.description,

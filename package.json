@@ -1,23 +1,28 @@
 {
   "type": "module",
-  "name": "vs_plugin",
+  "name": "vintagestory",
   "title": "Vintage Story Format Support",
   "description": "A Blockbench plugin that adds support for Vintage Story models",
   "version": "0.12.1",
   "author": {
-    "name": "Darkluke1111",
-    "email": "darkluke1111@gmx.de",
-    "url": "https://github.com/Darkluke1111"
+    "name": "Anego Studios",
+    "email": "office@anegostudios.com",
+    "url": "https://anegostudios.com"
   },
   "contributors": [
     {
       "name": "codename-B",
       "url": "https://github.com/codename-B"
+    },
+    {
+      "name": "Darkluke1111",
+      "email": "darkluke1111@gmx.de",
+      "url": "https://github.com/Darkluke1111"
     }
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Darkluke1111/BlockbenchPlugins"
+    "url": "https://github.com/anegostudios/blockbenchplugin"
   },
   "devDependencies": {
     "@types/json5": "^0.0.30",
