@@ -1,4 +1,8 @@
-import { VS_Direction, VS_EditorSettings, VS_Face, VS_ReflectiveMode } from "./vs_shape_def";
+import { VS_Direction, VS_Face, VS_ReflectiveMode } from "./vs_shape_def";
+
+for (const name of ['vs_code', 'vs_onActivityStopped', 'vs_onAnimationEnd', 'vs_library_ref']) {
+    new Property(Blockbench.Animation, 'string', name, { exposed: false });
+}
 
 export const VS_PROJECT_PROPS = [
     new Property(ModelProject, "string", "backDropShape", { exposed: false, }),
@@ -381,17 +385,11 @@ export const VS_LOCATOR_PROPS = [
 ];
 
 export const VS_FACE_PROPS = [
-    // @ts-expect-error: CubeFace is not in blockbench types for Property
     new Property(CubeFace, "number", "glow"),
-    // @ts-expect-error: CubeFace is not in blockbench types for Property
     new Property(CubeFace, "number", "reflectiveMode"),
-    // @ts-expect-error: CubeFace is not in blockbench types for Property
     new Property(CubeFace, "array", "windMode"),
-    // @ts-expect-error: CubeFace is not in blockbench types for Property
     new Property(CubeFace, "array", "windData"),
-    // @ts-expect-error: CubeFace is not in blockbench types for Property
     new Property(CubeFace, "boolean", "autoUv", { default: false }),
-    // @ts-expect-error: CubeFace is not in blockbench types for Property
     new Property(CubeFace, "boolean", "snapUv", { default: false }),
 ];
 
@@ -400,7 +398,7 @@ export const VS_FACE_PROPS = [
  */
 declare global {
     interface Face {
-        glow: boolean;
+        glow?: number;
         reflectiveMode?: VS_ReflectiveMode;
         windMode?: [number, number, number, number];
         windData?: [number, number, number, number];

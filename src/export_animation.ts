@@ -1,4 +1,5 @@
-import { VS_Animation, VS_AnimationKey, VS_AnimationLibrary, VS_AnimationParticle, VS_Keyframe, VS_KeyFrameInterpolation } from "./vs_shape_def";
+import { VS_Animation, VS_AnimationKey, VS_AnimationNumericField, VS_AnimationInterpolationField, VS_AnimationLibrary, VS_AnimationParticle, VS_Keyframe, VS_KeyFrameInterpolation } from "./vs_shape_def";
+import { sound_from_data_point } from "./animation_sounds";
 import * as util from "./util";
 import { is_backdrop_project } from "./util/misc";
 
@@ -31,16 +32,16 @@ function applyBezierHandle(
     segmentFrames: number,
     defaultWidthFrames: number,
     fps: number,
-    tangentFields: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey],
-    widthFields: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey],
+    tangentFields: [VS_AnimationNumericField, VS_AnimationNumericField, VS_AnimationNumericField],
+    widthFields: [VS_AnimationNumericField, VS_AnimationNumericField, VS_AnimationNumericField],
 ) {
     if (!valueDeltas || !timeDeltas || segmentFrames <= 0) return;
     for (let i = 0; i < 3; i++) {
         const widthFrames = Number(timeDeltas[i]) * fps;
         if (widthFrames === 0) continue; // degenerate (zero-width) handle; nothing meaningful to store
         const tangent = Number(valueDeltas[i]) * segmentFrames / widthFrames;
-        if (tangent !== 0) (elem as any)[tangentFields[i]] = tangent;
-        if (Math.abs(widthFrames - defaultWidthFrames) > 1e-9) (elem as any)[widthFields[i]] = widthFrames;
+        if (tangent !== 0) elem[tangentFields[i]] = tangent;
+        if (Math.abs(widthFrames - defaultWidthFrames) > 1e-9) elem[widthFields[i]] = widthFrames;
     }
 }
 
@@ -93,25 +94,25 @@ function applyCatmullRomToKey(
     fps: number,
 ) {
     const fields = CHANNEL_FIELDS[channel];
-    (elem as any)[fields.interp] = 'Bezier';
+    elem[fields.interp] = 'Bezier';
 
     const tx = computeCatmullRomTangents(channelKfs, idx, 'x', fps);
     const ty = computeCatmullRomTangents(channelKfs, idx, 'y', fps);
     const tz = computeCatmullRomTangents(channelKfs, idx, 'z', fps);
-    if (tx.out !== 0) (elem as any)[fields.tangentOutX] = tx.out;
-    if (ty.out !== 0) (elem as any)[fields.tangentOutY] = ty.out;
-    if (tz.out !== 0) (elem as any)[fields.tangentOutZ] = tz.out;
-    if (tx.in !== 0) (elem as any)[fields.tangentInX] = tx.in;
-    if (ty.in !== 0) (elem as any)[fields.tangentInY] = ty.in;
-    if (tz.in !== 0) (elem as any)[fields.tangentInZ] = tz.in;
+    if (tx.out !== 0) elem[fields.tangentOutX] = tx.out;
+    if (ty.out !== 0) elem[fields.tangentOutY] = ty.out;
+    if (tz.out !== 0) elem[fields.tangentOutZ] = tz.out;
+    if (tx.in !== 0) elem[fields.tangentInX] = tx.in;
+    if (ty.in !== 0) elem[fields.tangentInY] = ty.in;
+    if (tz.in !== 0) elem[fields.tangentInZ] = tz.in;
 }
 
 interface ChannelFieldNames {
-    interp: keyof VS_AnimationKey;
-    tangentInX: keyof VS_AnimationKey; tangentInY: keyof VS_AnimationKey; tangentInZ: keyof VS_AnimationKey;
-    tangentOutX: keyof VS_AnimationKey; tangentOutY: keyof VS_AnimationKey; tangentOutZ: keyof VS_AnimationKey;
-    tangentInWidthX: keyof VS_AnimationKey; tangentInWidthY: keyof VS_AnimationKey; tangentInWidthZ: keyof VS_AnimationKey;
-    tangentOutWidthX: keyof VS_AnimationKey; tangentOutWidthY: keyof VS_AnimationKey; tangentOutWidthZ: keyof VS_AnimationKey;
+    interp: VS_AnimationInterpolationField;
+    tangentInX: VS_AnimationNumericField; tangentInY: VS_AnimationNumericField; tangentInZ: VS_AnimationNumericField;
+    tangentOutX: VS_AnimationNumericField; tangentOutY: VS_AnimationNumericField; tangentOutZ: VS_AnimationNumericField;
+    tangentInWidthX: VS_AnimationNumericField; tangentInWidthY: VS_AnimationNumericField; tangentInWidthZ: VS_AnimationNumericField;
+    tangentOutWidthX: VS_AnimationNumericField; tangentOutWidthY: VS_AnimationNumericField; tangentOutWidthZ: VS_AnimationNumericField;
 }
 
 const CHANNEL_FIELDS: Record<BBChannel, ChannelFieldNames> = {
@@ -148,7 +149,7 @@ function applyInterpolationToKey(
     fps: number,
 ) {
     const fields = CHANNEL_FIELDS[channel];
-    (elem as any)[fields.interp] = interp;
+    elem[fields.interp] = interp;
 
     if (interp !== 'Bezier') return;
 
@@ -213,11 +214,8 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
             });
             (Object.keys(byChannel) as BBChannel[]).forEach(ch => byChannel[ch].sort((a, b) => a.time - b.time));
 
-            // Unit scale is normally omitted, but a non-linear scale channel needs every one of
-            // its keyframes present in the JSON: import detects the channel by the stretch fields
-            // and sizes each bezier segment from the gaps between them. Dropping an all-1 keyframe
-            // would silently lengthen the neighbouring segment.
-            const scaleNeedsAllKeys = byChannel.scale.some(kf => mapInterpolation(kf.interpolation).mode !== null);
+            const scaleNeedsAllKeys = byChannel.scale.some(kf => mapInterpolation(kf.interpolation).mode !== null
+                || ['x', 'y', 'z'].some(axis => Number(kf.data_points[0][axis]) !== 1));
 
             animator.keyframes.forEach(kf => {
                 const { mode: vsInterp, isCatmull } = mapInterpolation(kf.interpolation);
@@ -292,6 +290,15 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
                         (keyframes[frame].particles = keyframes[frame].particles || []).push(particle);
                     });
                 }
+                if (kf.channel === 'sound') {
+                    kf.data_points.forEach(dp => {
+                        const sound = sound_from_data_point(dp);
+                        if (!sound) return;
+                        const frame = Math.round(kf.time * fps);
+                        keyframes[frame] = keyframes[frame] || { frame, elements: {} };
+                        (keyframes[frame].sounds = keyframes[frame].sounds || []).push(sound);
+                    });
+                }
             });
         }
     });
@@ -306,28 +313,28 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
         }
         keyframe.elements = wrapped_elements;
         if (keyframe.particles) {
-            keyframe.particles = keyframe.particles.map(p => new oneLiner(p) as unknown as VS_AnimationParticle);
+            keyframe.particles = keyframe.particles.map(p => new oneLiner(p));
+        }
+        if (keyframe.sounds) {
+            keyframe.sounds = keyframe.sounds.map(s => new oneLiner(s));
         }
     }
 
     // Use preserved VS values if available, otherwise compute defaults
-    // @ts-expect-error: custom property from import
     const storedCode = animation.vs_code;
-    // @ts-expect-error: custom property from import
     const storedOnActivityStopped = animation.vs_onActivityStopped;
-    // @ts-expect-error: custom property from import
     const storedOnAnimationEnd = animation.vs_onAnimationEnd;
 
     // Map the Blockbench loop mode to onAnimationEnd. A stored value from import is only kept
     // while it still agrees with the current loop mode (it can be a superset, e.g. EaseOut maps
     // to 'once'); once the user changes the loop mode in Blockbench, the loop mode wins.
-    const loopToEnd: Record<string, string[]> = {
+    const loopToEnd: Record<_Animation['loop'], VS_Animation['onAnimationEnd'][]> = {
         loop: ["Repeat"],
         hold: ["Hold"],
         once: ["Stop", "EaseOut"],
     };
     const validEnds = loopToEnd[animation.loop] ?? loopToEnd.once;
-    const onAnimationEnd = validEnds.includes(storedOnAnimationEnd) ? storedOnAnimationEnd : validEnds[0];
+    const onAnimationEnd = storedOnAnimationEnd && validEnds.includes(storedOnAnimationEnd) ? storedOnAnimationEnd : validEnds[0];
 
     const vsAnimation : VS_Animation = {
         name: animation.name,
@@ -359,6 +366,8 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
             if (frame0) {
                 const virtualFrame = JSON.parse(JSON.stringify(frame0));
                 virtualFrame.frame = lastFrame;
+                delete virtualFrame.sounds;
+                delete virtualFrame.particles;
                 vsAnimation.keyframes.push(virtualFrame);
                 vsAnimation.keyframes.sort((a, b) => a.frame - b.frame);
             }
@@ -448,7 +457,8 @@ function stable_keyframe_content(keyframe: VS_Keyframe): string {
     return JSON.stringify({
         elements: sort_nested_object(keyframe.elements),
         textures: keyframe.textures ? sort_nested_object(keyframe.textures) : undefined,
-        particles: keyframe.particles ? sort_nested_object(keyframe.particles) : undefined
+        particles: keyframe.particles ? sort_nested_object(keyframe.particles) : undefined,
+        sounds: keyframe.sounds ? sort_nested_object(keyframe.sounds) : undefined
     });
 }
 

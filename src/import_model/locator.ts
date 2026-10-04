@@ -24,7 +24,7 @@ export function process_attachment_points(
         // which is stored as vs_group_from in absolute BB space (not rotationOrigin/origin)
         const absolute_pos = util.vector_add(
             [posX, posY, posZ],
-            (parent as any).vs_group_from ?? parent.origin
+            parent.vs_group_from ?? parent.origin
         );
 
         const locator = new Locator({
@@ -33,9 +33,9 @@ export function process_attachment_points(
         });
 
         // Set rotation via registered properties (persists in .bbmodel)
-        (locator as any).rotationX = parseFloat(ap.rotationX) || 0;
-        (locator as any).rotationY = parseFloat(ap.rotationY) || 0;
-        (locator as any).rotationZ = parseFloat(ap.rotationZ) || 0;
+        locator.rotationX = parseFloat(ap.rotationX) || 0;
+        locator.rotationY = parseFloat(ap.rotationY) || 0;
+        locator.rotationZ = parseFloat(ap.rotationZ) || 0;
 
         if (asBackdrop) {
             locator.locked = true;

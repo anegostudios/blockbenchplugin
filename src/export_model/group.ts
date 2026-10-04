@@ -21,7 +21,7 @@ function get_parent_pos(parent: Group | null, parent_from_override?: [number, nu
     }
     if (!parent) return [0, 0, 0];
     // Use stored VS from if available (set during import), otherwise fall back to origin
-    return (parent as any).vs_group_from ?? parent.origin;
+    return parent.vs_group_from ?? parent.origin;
 }
 
 /**
@@ -29,7 +29,7 @@ function get_parent_pos(parent: Group | null, parent_from_override?: [number, nu
  * Uses vs_group_from if set during import, otherwise falls back to origin.
  */
 function get_group_vs_from(node: Group): [number, number, number] {
-    return (node as any).vs_group_from ?? [...node.origin] as [number, number, number];
+    return node.vs_group_from ?? [...node.origin];
 }
 
 /**
@@ -37,7 +37,7 @@ function get_group_vs_from(node: Group): [number, number, number] {
  * Uses vs_group_to if set during import, otherwise falls back to origin.
  */
 function get_group_vs_to(node: Group): [number, number, number] {
-    return (node as any).vs_group_to ?? [...node.origin] as [number, number, number];
+    return node.vs_group_to ?? [...node.origin];
 }
 
 /**
@@ -74,18 +74,17 @@ export function process_group(
         rotationOrigin = util.vector_add(rotationOrigin, offset);
     }
 
-    const hasRotation = converted_rotation[0] !== 0 || converted_rotation[1] !== 0 || converted_rotation[2] !== 0;
 
     const vsElement: VS_Element = {
         name: node.name,
         from: from,
         to: to,
         rotationOrigin: rotationOrigin,
-        ...((node as any).vs_uv ? { uv: (node as any).vs_uv } : undefined),
+        ...(node.vs_uv ? { uv: node.vs_uv } : undefined),
         ...(converted_rotation[0] !== 0 && { rotationX: converted_rotation[0] }),
         ...(converted_rotation[1] !== 0 && { rotationY: converted_rotation[1] }),
         ...(converted_rotation[2] !== 0 && { rotationZ: converted_rotation[2] }),
-        ...((node as any).vs_zero_size_faces ? { faces: (node as any).vs_zero_size_faces } : undefined),
+        ...(node.vs_zero_size_faces ? { faces: node.vs_zero_size_faces } : undefined),
         children: []
     };
 
@@ -186,14 +185,13 @@ export function process_collapsed_group(
     // Process faces from the _geo cube
     const reduced_faces = process_faces(geoChild.faces);
 
-    const hasRotation = converted_rotation[0] !== 0 || converted_rotation[1] !== 0 || converted_rotation[2] !== 0;
 
     const vsElement: VS_Element = {
         name: node.name,
         from: from,
         to: to,
         rotationOrigin: rotationOrigin,
-        ...((geoChild as any).vs_uv ? { uv: (geoChild as any).vs_uv } : ((geoChild.uv_offset[0] !== 0 || geoChild.uv_offset[1] !== 0) && { uv: geoChild.uv_offset })),
+        ...(geoChild.vs_uv ? { uv: geoChild.vs_uv } : ((geoChild.uv_offset[0] !== 0 || geoChild.uv_offset[1] !== 0) && { uv: geoChild.uv_offset })),
         ...(converted_rotation[0] !== 0 && { rotationX: converted_rotation[0] }),
         ...(converted_rotation[1] !== 0 && { rotationY: converted_rotation[1] }),
         ...(converted_rotation[2] !== 0 && { rotationZ: converted_rotation[2] }),

@@ -1,9 +1,6 @@
 
 import { getActiveSlotNames } from './presets';
-import { suggestSlotFromName, getSlotInfo } from './slot_helpers';
-import { QUICK_MESSAGE_DURATION } from './constants';
-
-const DEBUG = false;
+import { suggestSlotFromName } from './slot_helpers';
 
 // Store last used slot per file pattern
 const slotMemory = new Map<string, string>();

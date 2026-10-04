@@ -2,15 +2,30 @@ import { exportAttachmentsVS } from './export_attachment_vs';
 import { exportAttachmentsBB } from './export_attachment_bb';
 import { deleteSection, deleteSectionSafe } from './delete_section';
 import { findAttachments } from './discovery';
-import { DISCOVERY_DEBOUNCE_MS, MIN_TOUCH_TARGET_SIZE, QUICK_MESSAGE_DURATION } from './constants';
-import { getActiveSlotNames } from './presets';
-import { getSlotInfo, getSlotCategory } from './slot_helpers';
+import type { IAttachmentSection } from './discovery';
+import { DISCOVERY_DEBOUNCE_MS, QUICK_MESSAGE_DURATION } from './constants';
+import { getSlotInfo } from './slot_helpers';
 
 const DEBUG = false;
 
-function logDebug(message: string, ...args: any[]) {
-    if (DEBUG) console.log(message, ...args);
+interface AttachmentPanelState {
+    sections: IAttachmentSection[];
+    openSections: string[];
+    hoveredSection: string | null;
 }
+
+type AttachmentPanelListener = [event: string, listener: () => void];
+
+interface AttachmentPanelContext extends AttachmentPanelState {
+    updateAttachments(): void;
+    refresh?: () => void;
+    _bbListeners?: AttachmentPanelListener[];
+}
+
+type AttachmentOutlinerNode = OutlinerNode & {
+    visibility?: boolean;
+    toggleVisibility?: (visible: boolean) => void;
+};
 
 // Track recently imported elements (within last 5 minutes)
 const RECENT_IMPORT_THRESHOLD = 5 * 60 * 1000; // 5 minutes in ms
@@ -68,6 +83,13 @@ function getAllChildElements(element: any) {
     return elements;
 }
 
+function walkOutliner(node: AttachmentOutlinerNode, callback: (node: AttachmentOutlinerNode) => void): void {
+    callback(node);
+    if (node instanceof Group && Array.isArray(node.children)) {
+        node.children.forEach(child => walkOutliner(child, callback));
+    }
+}
+
 /**
  * Calculates the depth of an element in the outliner hierarchy.
  * Depth is measured from the root (root = 0, first child = 1, etc.)
@@ -95,16 +117,6 @@ function getMinDepth(elements: any[]): number {
 }
 
 /**
- * Calculates the maximum depth among all elements in a section.
- * @param elements Array of elements in the section.
- * @returns The maximum depth found.
- */
-function getMaxDepth(elements: any[]): number {
-    if (elements.length === 0) return 0;
-    return Math.max(...elements.map(el => getElementDepth(el)));
-}
-
-/**
  * Updates the outliner selection with the provided elements.
  * @param {Array<object>} elements The elements to select.
  */
@@ -113,7 +125,7 @@ function updateOutlinerSelection(elements: any[]) {
     elements.forEach((element: any) => {
         Outliner.selected.safePush(element);
     });
-    (updateSelection as any)();
+    updateSelection();
 }
 
 
@@ -378,10 +390,10 @@ const vuePanel = {
             </div>
         </div>
     `,
-    data: () => ({
+    data: (): AttachmentPanelState => ({
         sections: [],
         openSections: [],
-        hoveredSection: null as string | null
+        hoveredSection: null
     }),
     methods: {
         /**
@@ -459,18 +471,11 @@ const vuePanel = {
          */
         exportBB(elements: any[]) {
             try {
-                (this as any).isExporting = true;
                 exportAttachmentsBB(elements);
-                // Note: exportAttachmentsBB uses Blockbench.export which is async but doesn't return a promise
-                // The success message will be shown after the export dialog completes
-                setTimeout(() => {
-                    (this as any).isExporting = false;
-                }, 100);
             } catch (e) {
                 const errorMsg = e instanceof Error ? e.message : String(e);
                 Blockbench.showQuickMessage(`Export failed: ${errorMsg}`, QUICK_MESSAGE_DURATION);
                 if (DEBUG) console.error('Export BB error:', e);
-                (this as any).isExporting = false;
             }
         },
         /**
@@ -479,18 +484,11 @@ const vuePanel = {
          */
         exportVS(elements: any[]) {
             try {
-                (this as any).isExporting = true;
                 exportAttachmentsVS(elements);
-                // Note: exportAttachmentsVS uses Blockbench.export which is async but doesn't return a promise
-                // The success message will be shown after the export dialog completes
-                setTimeout(() => {
-                    (this as any).isExporting = false;
-                }, 100);
             } catch (e) {
                 const errorMsg = e instanceof Error ? e.message : String(e);
                 Blockbench.showQuickMessage(`Export failed: ${errorMsg}`, QUICK_MESSAGE_DURATION);
                 if (DEBUG) console.error('Export VS error:', e);
-                (this as any).isExporting = false;
             }
         },
         /**
@@ -512,19 +510,19 @@ const vuePanel = {
         /**
          * Updates the list of attachments by calling the discovery function.
          */
-        updateAttachments() {
-            (this as any).sections = findAttachments();
+        updateAttachments(this: AttachmentPanelState) {
+            this.sections = findAttachments();
         },
         /**
          * Toggles the visibility of a section in the panel.
          * @param {string} slot The slot name of the section to toggle.
          */
-        toggleSection(slot: string) {
-            const index = (this as any).openSections.indexOf(slot);
+        toggleSection(this: AttachmentPanelState, slot: string) {
+            const index = this.openSections.indexOf(slot);
             if (index > -1) {
-                (this as any).openSections.splice(index, 1);
+                this.openSections.splice(index, 1);
             } else {
-                (this as any).openSections.push(slot);
+                this.openSections.push(slot);
             }
         },
         /**
@@ -532,8 +530,8 @@ const vuePanel = {
          * @param {string} slot The slot name of the section.
          * @returns {boolean} True if the section is open, false otherwise.
          */
-        isSectionOpen(slot: string) {
-            return (this as any).openSections.includes(slot);
+        isSectionOpen(this: AttachmentPanelState, slot: string) {
+            return this.openSections.includes(slot);
         },
         /**
          * Selects an element and all its children.
@@ -556,16 +554,16 @@ const vuePanel = {
          * @param {Array<Group | Cube>} elements The elements to toggle visibility for.
          * @param {boolean} isVisible The desired visibility state.
          */
-        toggleVisibility(elements: any[], isVisible: boolean) {
+        toggleVisibility(elements: OutlinerNode[], isVisible: boolean) {
             if (!elements || !Array.isArray(elements)) return;
 
             try {
-                Undo.initEdit({ outliner: true }, `Toggle visibility: ${elements.length} element(s)`);
+                Undo.initEdit({ outliner: true });
 
                 elements.forEach(element => {
                     if (!element) return;
                     try {
-                        (this as any)._walk(element, (node: any) => {
+                        walkOutliner(element, node => {
                             if (!node) return;
                             if (typeof node.toggleVisibility === 'function') {
                                 if (node.visibility !== isVisible) node.toggleVisibility(isVisible);
@@ -584,17 +582,6 @@ const vuePanel = {
             } catch (e) {
                 if (DEBUG) console.error('Error in toggleVisibility:', e);
                 Blockbench.showQuickMessage('Failed to toggle visibility', QUICK_MESSAGE_DURATION);
-            }
-        },
-        /**
-         * Traverses a node and its children, applying a callback to each.
-         * @param {object} node The node to start traversal from.
-         * @param {function} callback The function to apply to each node.
-         */
-        _walk(node: any, callback: (n: any) => void) {
-            callback(node);
-            if (node instanceof Group && Array.isArray(node.children)) {
-                node.children.forEach(child => (this as any)._walk(child, callback));
             }
         },
         /**
@@ -622,33 +609,33 @@ const vuePanel = {
             return element instanceof Group ? 'folder' : 'widgets';
         }
     },
-    mounted() {
+    mounted(this: AttachmentPanelContext) {
         // Debounce refresh calls to avoid unnecessary updates when multiple events fire
-        (this as any).refresh = debounce(() => (this as any).updateAttachments(), DISCOVERY_DEBOUNCE_MS);
-        (this as any).updateAttachments(); // Initial load without debounce
+        this.refresh = debounce(() => this.updateAttachments(), DISCOVERY_DEBOUNCE_MS);
+        this.updateAttachments(); // Initial load without debounce
 
-        (this as any)._bbListeners = [
-            ['update_outliner', (this as any).refresh],
-            ['load_project', (this as any).refresh],
-            ['select_project', (this as any).refresh],
-            ['new_project', (this as any).refresh],
-            ['update_selection', (this as any).refresh],
-            ['undo', (this as any).refresh],
-            ['redo', (this as any).refresh],
-            ['attachments_changed', (this as any).refresh]
+        this._bbListeners = [
+            ['update_outliner', this.refresh],
+            ['load_project', this.refresh],
+            ['select_project', this.refresh],
+            ['new_project', this.refresh],
+            ['update_selection', this.refresh],
+            ['undo', this.refresh],
+            ['redo', this.refresh],
+            ['attachments_changed', this.refresh]
         ];
 
-        (this as any)._bbListeners.forEach(([evt, fn]: [string, any]) => Blockbench.on(evt, fn));
+        this._bbListeners.forEach(([evt, fn]) => Blockbench.on(evt, fn));
     },
-    beforeUnmount() {
-        if ((this as any)._bbListeners) {
-            (this as any)._bbListeners.forEach(([evt, fn]: [string, any]) => Blockbench.removeListener(evt, fn));
+    beforeUnmount(this: AttachmentPanelContext) {
+        if (this._bbListeners) {
+            this._bbListeners.forEach(([evt, fn]) => Blockbench.removeListener(evt, fn));
         }
     },
     // Vue 2 compatibility
-    beforeDestroy() {
-        if ((this as any)._bbListeners) {
-            (this as any)._bbListeners.forEach(([evt, fn]: [string, any]) => Blockbench.removeListener(evt, fn));
+    beforeDestroy(this: AttachmentPanelContext) {
+        if (this._bbListeners) {
+            this._bbListeners.forEach(([evt, fn]) => Blockbench.removeListener(evt, fn));
         }
     }
 };
@@ -660,6 +647,7 @@ const vuePanel = {
  */
 export function createAttachmentsPanel(actions: any) {
     const toolbar = new Toolbar('attachments_toolbar', {
+        id: 'attachments_toolbar',
         children: []
     });
 
@@ -672,13 +660,17 @@ export function createAttachmentsPanel(actions: any) {
     }
 
     const panel = new Panel('attachments_panel', {
+        id: 'attachments_panel',
         name: 'Attachments',
         icon: 'attach_file',
+        expand_button: false,
+        default_side: 'right',
         default_position: {
             slot: 'right_bar',
             float_position: [0, 0],
             float_size: [300, 400],
-            height: 400
+            height: 400,
+            folded: false
         },
         toolbars: [toolbar],
         component: vuePanel

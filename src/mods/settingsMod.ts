@@ -7,34 +7,6 @@ declare var Settings: any;
 declare var Dialog: any;
 declare var Interface: any;
 
-/*
- * Making a custom settinsg category errors out when loading the plugin upon the start of Blockbench 
- * (works fine when the plugin is loaded after Blockbench has alrady started).
- * Probably an issue where Blockbench loads the plugin when the Settings dialog isn't fully initialized yet... =/
- */
-// 
-// createBlockbenchMod(
-//     `${PACKAGE.name}:vs_settings_category_mod`,
-//     {},
-//     _context => {
-//         //@ts-expect-error: addCategory is not available in blockbench types yet
-//         Settings.addCategory("vintage_story", {name: "Vintage Story"});
-//     },
-//     _context => {
-//         removeSettingsCategory("vintage_story");
-//     }
-
-// );
-
-function removeSettingsCategory(id: string) {
-    if(Settings.dialog[id]){
-        delete Settings.structure[id];
-        delete Settings.dialog.sidebar.pages[id];
-        Settings.dialog.sidebar.build();
-    }
-}
-
-
 createBlockbenchMod(
     `${PACKAGE.name}:vs_gamepath_settings_mod`,
     {},
@@ -66,8 +38,7 @@ createBlockbenchMod(
         });
         return setting;
     },
-    context => {
-        //context?.delete();
+    () => {
     }
 
 );
@@ -101,8 +72,7 @@ createBlockbenchMod(
 
         return presetSetting;
     },
-    context => {
-        //context?.delete();
+    () => {
     }
 );
 
@@ -153,8 +123,7 @@ createBlockbenchMod(
 
         return customSlotsSetting;
     },
-    context => {
-        //context?.delete();
+    () => {
     }
 );
 
@@ -171,8 +140,7 @@ createBlockbenchMod(
         });
         return setting;
     },
-    context => {
-        //context?.delete();
+    () => {
     }
 );
 
@@ -189,8 +157,7 @@ createBlockbenchMod(
         });
         return setting;
     },
-    context => {
-        //context?.delete();
+    () => {
     }
 );
 

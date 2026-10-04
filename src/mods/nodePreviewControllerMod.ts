@@ -44,10 +44,8 @@ createBlockbenchMod(`${PACKAGE.name}:node_preview_controller_mod`,
  * Does the same as the original method but skips parenting root groups to the internal root mesh (commented section)
  */
 function updateStepChildTransform(controller: NodePreviewController, element: any, stepParent: Group | Cube | null) {
-    //@ts-expect-error: missing types
     const mesh = element.mesh;
 
-    //@ts-expect-error: missing types
     if (element.getTypeBehavior('movable')) {
         let position = [...element.origin] as Vector3Tuple;
         if (stepParent) {
@@ -69,30 +67,21 @@ function updateStepChildTransform(controller: NodePreviewController, element: an
                 ];
             }
         }
-        //@ts-expect-error: missing types
         mesh.position.set(position[0], position[1], position[2]);
     }
 
-    //@ts-expect-error: missing types
     if (element.getTypeBehavior('rotatable')) {
         const rotation = element.vs_step_parent_local === true || !stepParent
             ? ([element.rotation?.[0] || 0, element.rotation?.[1] || 0, element.rotation?.[2] || 0] as [number, number, number])
             : relativeEulerXYZ(getElementBindRotation(element), getElementBindRotation(stepParent));
-        //@ts-expect-error: missing types
         mesh.rotation.x = Math.degToRad(rotation[0]);
-        //@ts-expect-error: missing types
         mesh.rotation.y = Math.degToRad(rotation[1]);
-        //@ts-expect-error: missing types
         mesh.rotation.z = Math.degToRad(rotation[2]);
     }
     
-    //@ts-expect-error: missing types
     if (element.getTypeBehavior('scalable')) {
-        //@ts-expect-error: missing types
         mesh.scale.x = element.scale[0] || 1e-7;
-        //@ts-expect-error: missing types
         mesh.scale.y = element.scale[1] || 1e-7;
-        //@ts-expect-error: missing types
         mesh.scale.z = element.scale[2] || 1e-7;
     }
 

@@ -2,7 +2,6 @@ import { createBlockbenchMod } from "../util/moddingTools";
 import * as PACKAGE from "../../package.json";
 import { is_vs_project } from "../util";
 
-// @ts-expect-error: THREE is global in Blockbench
 declare const THREE: typeof import('three');
 
 /**
@@ -51,7 +50,6 @@ createBlockbenchMod(
                             THREE.MathUtils.degToRad(rotation[0]),
                             THREE.MathUtils.degToRad(rotation[1]),
                             THREE.MathUtils.degToRad(rotation[2])
-                            //@ts-expect-error: Missing in type --- IGNORE ---
                         ), Format.euler_order);
                     this.displayPosition(vec.toArray(), multiplier);
                 }

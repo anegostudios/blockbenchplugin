@@ -67,7 +67,7 @@ export function deleteSectionSafe(elements: any[]) {
         return;
     }
 
-    Undo.initEdit({ outliner: true }, `Delete (-) Root`);
+    Undo.initEdit({ outliner: true });
 
     // Identify root attachment groups (first level with clothingSlot) that should be preserved
     const rootGroups = identifyRootAttachmentGroups(elements);
@@ -110,7 +110,7 @@ export function deleteSection(elements: any[]) {
     }
 
     // Confirmation is handled in panel.ts confirmDelete method
-    Undo.initEdit({ outliner: true }, `Delete ${elements.length} attachment(s)`);
+    Undo.initEdit({ outliner: true });
 
     // The 'elements' array from the panel is the definitive list of top-level attachments for this section.
     // Blockbench's .remove() method handles removing children automatically, regardless of their properties.

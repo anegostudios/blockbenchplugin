@@ -2,12 +2,10 @@ import {export_model} from "./export_model";
 import { compile_animation_library } from "./export_animation";
 import { VS_EditorSettings, VS_Shape } from "./vs_shape_def";
 import { VS_PROJECT_PROPS } from "./property";
-import { export_textures, resolveTextureLocation } from "./export_textures";
+import { resolveTextureLocation, warnTextureReadErrors } from "./export_textures";
 import { path_to_reference } from "./animation_library_paths";
 
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const fs = requireNativeModule('fs');
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const path = requireNativeModule('path');
 
 declare var Settings: any;
@@ -116,17 +114,19 @@ export function ex(options): VS_Shape {
 
     // Populate Textures
     const textures: Record<string, string> = {};
+    const unresolvedReadErrors = new Map<string, unknown>();
     for (const texture of Texture.all) {
         // Try using existing textureLocation first, then resolve from project path or texture source
         let location = texture.textureLocation || "";
+        const readErrors = new Map<string, unknown>();
 
         if (!location || location === "") {
             // Try project save path first
-            location = resolveTextureLocation(Project.save_path, texture.name);
+            location = resolveTextureLocation(Project.save_path, texture.name, readErrors);
 
             // If no save path, try texture source path
             if ((!location || location === "") && texture.source) {
-                location = resolveTextureLocation(texture.source, texture.name);
+                location = resolveTextureLocation(texture.source, texture.name, readErrors);
             }
         }
 
@@ -137,6 +137,7 @@ export function ex(options): VS_Shape {
         }
 
         textures[texture.name] = location || "";
+        if (!location) readErrors.forEach((error, dir) => unresolvedReadErrors.set(dir, error));
     }
 
     // Export model elements
@@ -145,7 +146,7 @@ export function ex(options): VS_Shape {
     // Partition animations by file: path-less ones are inline (embedded in the shape),
     // while animations belonging to a library file are referenced via animationLibraries
     // (the library file itself is saved separately through the animation codec / panel).
-    const allAnimations = (Animation as unknown as typeof _Animation).all;
+    const allAnimations = Blockbench.Animation.all;
     const inlineAnimations = compile_animation_library(allAnimations.filter(a => !a.path)).animations;
 
     // Library refs are emitted even for backdrop projects. Backdrops suppress inline animation
@@ -155,8 +156,7 @@ export function ex(options): VS_Shape {
     const seenRefs = new Set<string>();
     for (const animation of allAnimations) {
         if (!animation.path) continue;
-        // @ts-expect-error: custom property for round-trip fidelity
-        const ref: string | null = animation.vs_library_ref ?? path_to_reference(animation.path);
+        const ref: string | null = animation.vs_library_ref || path_to_reference(animation.path);
         if (ref && !seenRefs.has(ref)) { seenRefs.add(ref); libraryRefs.push(ref); }
     }
 
@@ -182,5 +182,6 @@ export function ex(options): VS_Shape {
         data.animationLibraries = libraryRefs;
     }
 
+    warnTextureReadErrors(unresolvedReadErrors);
     return data;
 }

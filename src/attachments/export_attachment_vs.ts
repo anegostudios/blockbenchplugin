@@ -12,7 +12,7 @@ const fs = requireNativeModule('fs');
 
 const DEBUG = false; // Enable debug to see what's being exported
 
-function logDebug(message: string, ...args: any[]) {
+function logDebug(message: string, ...args: unknown[]) {
     if (DEBUG) console.log(message, ...args);
 }
 
@@ -24,7 +24,7 @@ function isFiniteVector3(value: unknown): value is Vector3Tuple {
 
 function getElementBindRotation(element: Group | Cube): Vector3Tuple {
     const chain: Vector3Tuple[] = [];
-    let current: any = element;
+    let current: OutlinerNode | OutlinerNode['parent'] = element;
     while (current instanceof Group || current instanceof Cube) {
         chain.unshift([...(current.rotation || [0, 0, 0])] as Vector3Tuple);
         current = current.parent;
@@ -33,7 +33,7 @@ function getElementBindRotation(element: Group | Cube): Vector3Tuple {
 }
 
 function getSocketFrom(group: Group): Vector3Tuple {
-    const storedFrom = (group as any).vs_group_from;
+    const storedFrom = group.vs_group_from;
     if (isFiniteVector3(storedFrom)) return [...storedFrom];
     const geoChild = group.children.find(child =>
         child instanceof Cube && child.name === `${group.name}_geo`
@@ -42,7 +42,7 @@ function getSocketFrom(group: Group): Vector3Tuple {
 }
 
 function isInAttachmentSubtree(candidate: Group, attachmentRoot: Group | Cube): boolean {
-    let current: any = candidate;
+    let current: OutlinerNode | OutlinerNode['parent'] = candidate;
     while (current && current instanceof Group) {
         if (current === attachmentRoot) return true;
         current = current.parent;
@@ -381,9 +381,9 @@ function process_attachment_group(
 
     // Filter children to ONLY include those with matching clothingSlot
     // Don't include groups with no slot, as they might be base model elements
-    const filteredChildren = (node.children || []).filter((child: any) => {
+    const filteredChildren = (node.children || []).filter(child => {
         if (!(child instanceof Group || child instanceof Cube)) return false;
-        const childSlot = (child as any).clothingSlot;
+        const childSlot = child.clothingSlot;
         // Empty means inherit from this attachment root. An explicit different
         // slot is a real boundary and must not be exported with this attachment.
         return !childSlot || childSlot.trim() === '' || childSlot.trim() === targetSlot.trim();
@@ -416,10 +416,11 @@ function traverseAttachment(
 ) {
     for (const node of nodes) {
         if (!node.export) continue;
+        if (!(node instanceof Group || node instanceof Cube)) continue;
 
         // Filter: ONLY process nodes with matching clothingSlot
         // Don't include nodes with no slot, as they might be base model elements
-        const nodeSlot = (node as any).clothingSlot;
+        const nodeSlot = node.clothingSlot;
         const hasMatchingSlot = !nodeSlot || nodeSlot.trim() === '' || nodeSlot.trim() === targetSlot.trim();
 
         // Skip nodes that don't have the matching slot
@@ -437,14 +438,14 @@ function traverseAttachment(
         } else if (node instanceof Cube) {
             // For cubes, we need to apply stepParentName manually since process_cube doesn't accept it
             // Save the original stepParentName to restore later
-            const originalStepParent = (node as any).stepParentName;
+            const originalStepParent = node.stepParentName;
             if (stepParentToUse && (!originalStepParent || originalStepParent.trim() === '')) {
-                (node as any).stepParentName = stepParentToUse;
+                node.stepParentName = stepParentToUse;
             }
             process_cube(parent, node, accu, offset);
             // Restore original stepParentName
             if (stepParentToUse) {
-                (node as any).stepParentName = originalStepParent;
+                node.stepParentName = originalStepParent;
             }
         }
         // Locator nodes are handled as attachment points on their parent elements, so skip them here
@@ -458,7 +459,7 @@ function traverseAttachment(
  * @param clothingSlot The clothing slot to look for
  * @returns The topmost group that should contain this attachment, or null
  */
-function findTopmostAttachmentRoot(element: any, clothingSlot: string): Group | null {
+function findTopmostAttachmentRoot(element: Group | Cube, clothingSlot: string): Group | null {
     // Walk up the tree to find the highest group with the matching clothingSlot
     // Only return groups that have the matching clothingSlot (don't include groups with no slot)
     let current = element.parent;
@@ -466,7 +467,7 @@ function findTopmostAttachmentRoot(element: any, clothingSlot: string): Group | 
 
     while (current && current instanceof Group) {
         // Check if this group's clothingSlot matches
-        const groupSlot = (current as any).clothingSlot;
+        const groupSlot = current.clothingSlot;
         const hasMatchingSlot = groupSlot && groupSlot.trim() !== '' && groupSlot === clothingSlot;
 
         if (hasMatchingSlot) {
@@ -486,9 +487,13 @@ function findTopmostAttachmentRoot(element: any, clothingSlot: string): Group | 
 
 /**
  * Exports the selected attachments to the Vintage Story format.
- * @param {Array<Group>} selection - An array of selected attachment groups.
+ * @param selection - The selected attachment groups and cubes.
  */
-export function exportAttachmentsVS(selection: Group[]) {
+export function exportAttachmentsVS(selection: (Group | Cube)[]) {
+    if (!Project) {
+        Blockbench.showQuickMessage("Please open a project before exporting attachments.", QUICK_MESSAGE_DURATION);
+        return;
+    }
     if (!selection || selection.length === 0) {
         Blockbench.showQuickMessage("Please select one or more attachments to export.", QUICK_MESSAGE_DURATION);
         return;
@@ -510,10 +515,10 @@ export function exportAttachmentsVS(selection: Group[]) {
     // First pass: find the actual root groups for all elements
     // This handles cases where clothingSlot is on cubes but not parent groups
     const rootGroupsSet = new Set<Group>();
-    const processedElements = new Set<any>();
+    const processedElements = new Set<Group | Cube>();
 
     for (const element of selection) {
-        const myClothingSlot = (element as any).clothingSlot;
+        const myClothingSlot = element.clothingSlot;
         if (!myClothingSlot || myClothingSlot.trim() === '') {
             continue; // Not an attachment
         }
@@ -542,7 +547,7 @@ export function exportAttachmentsVS(selection: Group[]) {
     for (const element of selection) {
         if (processedElements.has(element)) continue;
 
-        const myClothingSlot = (element as any).clothingSlot;
+        const myClothingSlot = element.clothingSlot;
         if (!myClothingSlot || myClothingSlot.trim() === '') continue;
 
         if (element instanceof Cube) {
@@ -554,7 +559,7 @@ export function exportAttachmentsVS(selection: Group[]) {
     // Convert to array and filter out groups with no clothingSlot
     // Only export groups that have a clothingSlot (don't export base model groups like "Root")
     const rootAttachments = Array.from(rootGroupsSet).filter(group => {
-        const groupSlot = (group as any).clothingSlot;
+        const groupSlot = group.clothingSlot;
         const hasSlot = groupSlot && groupSlot.trim() !== '';
         if (!hasSlot) {
             logDebug(`[VS Attachment Export] Filtering out group "${group.name}" - no clothingSlot`);
@@ -574,13 +579,13 @@ export function exportAttachmentsVS(selection: Group[]) {
             // If no stepParentName was determined, find the first parent with a different clothingSlot
             // This parent should be the base model group that the attachment attaches to
             if (!stepParentName || stepParentName.trim() === '') {
-                const groupClothingSlot = (group as any).clothingSlot;
+                const groupClothingSlot = group.clothingSlot;
                 let currentParent = group.parent;
 
                 // Walk up the parent chain to find the first parent with a different (or no) clothingSlot
                 // This should be the base model group that the attachment attaches to
                 while (!stepParentName && currentParent && currentParent instanceof Group) {
-                    const parentClothingSlot = (currentParent as any).clothingSlot;
+                    const parentClothingSlot = currentParent.clothingSlot;
                     const parentHasDifferentSlot = !parentClothingSlot || parentClothingSlot.trim() === '' || parentClothingSlot !== groupClothingSlot;
 
                     if (parentHasDifferentSlot) {
@@ -602,7 +607,7 @@ export function exportAttachmentsVS(selection: Group[]) {
             if (stepParentName && stepParentName.trim() !== '') {
                 // Only modify if we're setting a new value
                 if (!originalStepParent || originalStepParent.trim() === '') {
-                    (group as any).stepParentName = stepParentName;
+                    group.stepParentName = stepParentName;
                     modifiedGroups.push(group);
                     logDebug(`[VS Attachment Export] Set stepParentName="${stepParentName}" on "${group.name}"`);
                 }
@@ -639,7 +644,7 @@ export function exportAttachmentsVS(selection: Group[]) {
             // Use filtered attachment traversal logic to process the attachment
             // We create a temporary array to hold the elements for this single attachment
             const attachmentElements: VS_Element[] = [];
-            const groupClothingSlot = (group as any).clothingSlot || '';
+            const groupClothingSlot = group.clothingSlot || '';
             traverseAttachment(null, [group], attachmentElements, offset, groupClothingSlot, stepParentName, rootTransform);
 
             // Add the processed elements to the main elements array
@@ -654,7 +659,7 @@ export function exportAttachmentsVS(selection: Group[]) {
             // Group orphan cubes by clothingSlot to determine stepParentName for each group
             const cubesBySlot = new Map<string, Cube[]>();
             orphanCubes.forEach(cube => {
-                const slot = (cube as any).clothingSlot || '';
+                const slot = cube.clothingSlot || '';
                 if (!cubesBySlot.has(slot)) {
                     cubesBySlot.set(slot, []);
                 }
@@ -667,14 +672,14 @@ export function exportAttachmentsVS(selection: Group[]) {
             orphanCubes.forEach(cube => {
                 // Determine stepParentName for this specific cube
                 let stepParentName: string | null = cube.stepParentName?.trim() || null;
-                const cubeSlot = (cube as any).clothingSlot || '';
+                const cubeSlot = cube.clothingSlot || '';
                 let currentParent = cube.parent;
 
                 // Walk up the parent chain to find the first parent with a different (or no) clothingSlot
                 // This should be the immediate base model parent for this cube.
                 // An authored stepParentName always wins.
                 while (!stepParentName && currentParent && currentParent instanceof Group) {
-                    const parentClothingSlot = (currentParent as any).clothingSlot;
+                    const parentClothingSlot = currentParent.clothingSlot;
                     const parentHasDifferentSlot = !parentClothingSlot || parentClothingSlot.trim() === '' || parentClothingSlot !== cubeSlot;
 
                     if (parentHasDifferentSlot) {
@@ -734,7 +739,7 @@ export function exportAttachmentsVS(selection: Group[]) {
     } finally {
         // Clean up the temporarily added property to avoid side effects
         modifiedGroups.forEach(group => {
-            delete (group as any).stepParentName;
+            delete group.stepParentName;
         });
     }
 

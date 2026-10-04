@@ -90,7 +90,7 @@ function findExistingTextures(name: string, textureLocation: string): TextureMat
                 continue;
             }
 
-            const pathFilename = extractFilename(texture.path)?.toLowerCase();
+            const pathFilename = texture.path ? extractFilename(texture.path)?.toLowerCase() : undefined;
             if (pathFilename === locationFilename) {
                 match.byFilename = texture;
             }
@@ -155,21 +155,20 @@ function handleExistingTextureByName(
     // Always update UV size
     updateTextureUVSize(texture, name, content);
 
-    // Only attempt to load if not already loaded
-    if (!texture.loaded) {
-        // Try to find a valid path from other matches
-        if (match.byLocation?.path) {
-            texture.path = match.byLocation.path;
+    // Point the texture at the best path available and load it. This used to be guarded by
+    // `if (!texture.loaded)`, but Blockbench Textures have no `loaded` flag, so the guard was
+    // always true and the load happened regardless.
+    if (match.byLocation?.path) {
+        texture.path = match.byLocation.path;
+        texture.load();
+    } else if (match.byFilename?.path) {
+        texture.path = match.byFilename.path;
+        texture.load();
+    } else {
+        const texturePath = util.get_texture_location(null, textureLocation);
+        if (texturePath && texturePath.length > 0) {
+            texture.path = texturePath;
             texture.load();
-        } else if (match.byFilename?.path) {
-            texture.path = match.byFilename.path;
-            texture.load();
-        } else {
-            const texturePath = util.get_texture_location(null, textureLocation);
-            if (texturePath && texturePath.length > 0) {
-                texture.path = texturePath;
-                texture.load();
-            }
         }
     }
 }
@@ -189,7 +188,7 @@ function handleExistingTextureByLocation(
         updateTextureUVSize(texture, name, content);
     } else {
         // Different name, create new texture reference pointing to same location
-        createVSAttachmentTexture(name, texture.path, textureLocation, content);
+        createVSAttachmentTexture(name, texture.path ?? '', textureLocation, content);
     }
 }
 

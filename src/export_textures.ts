@@ -1,9 +1,8 @@
 import { collect_tree_data, flatten } from "./util/element_tree";
 import { VS_Element } from "./vs_shape_def";
+import type { Dirent } from "fs";
 
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const fs = requireNativeModule('fs');
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const path = requireNativeModule('path');
 
 /**
@@ -15,6 +14,7 @@ export function export_textures(elements: VS_Element[]): Record<string, string> 
     // Populate Textures
     const used_texture_refs = get_used_texture_names(elements);
     const textures: Record<string, string> = {};
+    const unresolvedReadErrors = new Map<string, unknown>();
     for (const texture of Texture.all) {
         // Skip unused textures
         if(!used_texture_refs.has(texture.name)) {
@@ -22,17 +22,26 @@ export function export_textures(elements: VS_Element[]): Record<string, string> 
         }
         // Try using existing textureLocation first, then resolve from project path or texture source
         let location = texture.textureLocation;
+        const readErrors = new Map<string, unknown>();
         if (!location) {
             // Try project save path first
-            location = resolveTextureLocation(Project!.save_path, texture.name);
+            location = resolveTextureLocation(Project!.save_path, texture.name, readErrors);
             // If no save path, try texture source path
             if (!location && texture.source) {
-                location = resolveTextureLocation(texture.source, texture.name);
+                location = resolveTextureLocation(texture.source, texture.name, readErrors);
             }
         }
         textures[texture.name] = location;
+        if (!location) readErrors.forEach((error, dir) => unresolvedReadErrors.set(dir, error));
     }
+    warnTextureReadErrors(unresolvedReadErrors);
     return textures;
+}
+
+export function warnTextureReadErrors(readErrors: Map<string, unknown>): void {
+    if (readErrors.size === 0) return;
+    console.error('[VS Export] Unresolved texture search; unreadable folders:', readErrors);
+    Blockbench.showQuickMessage('Some texture paths are unresolved and folders could not be searched. Check the exported texture references.', 5000);
 }
 
 /**
@@ -69,7 +78,7 @@ function texture_name_extractor(element: VS_Element): Set<string> {
  * @param textureName - The name of the texture (e.g., "fern.png")
  * @returns The VS-style texture path (e.g., "blocks/fern") or empty string if not found
  */
-export function resolveTextureLocation(projectPath: string | undefined, textureName: string): string {
+export function resolveTextureLocation(projectPath: string | undefined, textureName: string, readErrors = new Map<string, unknown>()): string {
     if (!projectPath || !textureName) {
         return "";
     }
@@ -98,13 +107,8 @@ export function resolveTextureLocation(projectPath: string | undefined, textureN
         return "";
     }
 
-    // Check if textures folder exists
-    if (!fs.existsSync(texturesPath)) {
-        return "";
-    }
-
     // Search recursively for the texture file
-    const textureFile = findTextureFile(texturesPath, textureName);
+    const textureFile = findTextureFile(texturesPath, textureName, readErrors);
     if (!textureFile) return "";
 
     // Build VS-style relative path (relative to textures folder, without extension)
@@ -117,22 +121,25 @@ export function resolveTextureLocation(projectPath: string | undefined, textureN
 /**
  * Recursively searches for a texture file in a directory.
  */
-function findTextureFile(dir: string, textureName: string): string | null {
+function findTextureFile(dir: string, textureName: string, readErrors: Map<string, unknown>): string | null {
+    let entries: Dirent[];
     try {
-        const entries = fs.readdirSync(dir, { withFileTypes: true });
-
-        for (const entry of entries) {
-            const fullPath = path.join(dir, entry.name);
-
-            if (entry.isDirectory()) {
-                const found = findTextureFile(fullPath, textureName);
-                if (found) return found;
-            } else if (entry.isFile() && entry.name === textureName) {
-                return fullPath;
-            }
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (error: unknown) {
+        if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) {
+            readErrors.set(dir, error);
         }
-    } catch (e) {
-        // Directory read error, skip
+        return null;
+    }
+
+    for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            const found = findTextureFile(fullPath, textureName, readErrors);
+            if (found) return found;
+        } else if (entry.isFile() && entry.name === textureName) {
+            return fullPath;
+        }
     }
 
     return null;

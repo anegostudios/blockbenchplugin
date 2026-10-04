@@ -1,9 +1,7 @@
 import { im } from "../import";
 import JSON5 from "json5";
 
-// @ts-expect-error: requireNativeModule is missing in blockbench types
 const path = requireNativeModule('path');
-// @ts-expect-error: requireNativeModule is missing in blockbench types
 const fs = requireNativeModule('fs');
 
 export function load_back_drop_shape(backDropShape: string) {

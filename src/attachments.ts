@@ -1,8 +1,6 @@
-import { findAttachments, isAttachment, getAttachments } from "./attachments/discovery";
+import { findAttachments, isAttachment } from "./attachments/discovery";
 import { createAttachmentsPanel } from "./attachments/panel";
 import { createActions } from "./attachments/actions";
-declare var Deletable: any;
-declare var Panel: any;
 declare var Mode: any;
 declare var Blockbench: any;
 
@@ -64,27 +62,41 @@ function init() {
 
 function cleanup() {
     console.log("Attachments module cleaning up...");
-    
-    deletables.forEach((item) => {
-            try {
-                item.delete();
-            } catch(e) {
-                console.log(e);
-            }
-    });
-    deletables = [];
+    const failures: { resource: Deletable | string; error: unknown }[] = [];
 
-    eventListeners.forEach(({ event, listener }) => {
-        Blockbench.removeListener(event, listener);
-        console.log(`Removed ${event} listener`);
+    deletables = deletables.filter(item => {
+        try {
+            item.delete();
+            return false;
+        } catch (error) {
+            failures.push({ resource: item, error });
+            return true;
+        }
     });
-    eventListeners = [];
+
+    eventListeners = eventListeners.filter(({ event, listener }) => {
+        try {
+            Blockbench.removeListener(event, listener);
+            console.log(`Removed ${event} listener`);
+            return false;
+        } catch (error) {
+            failures.push({ resource: event, error });
+            return true;
+        }
+    });
 
     if ((window as any).debugFindAttachments) {
         delete (window as any).debugFindAttachments;
     }
 
+    if (failures.length) {
+        console.error("Attachments module cleanup incomplete:", failures);
+        Blockbench.showQuickMessage('Could not fully unload attachments. Restart Blockbench to finish cleanup.', 5000);
+        return false;
+    }
+
     console.log("Attachments module cleanup complete");
+    return true;
 }
 
 export const attachments = {

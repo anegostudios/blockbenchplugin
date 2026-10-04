@@ -1,4 +1,4 @@
-import { VS_Element, VS_Shape } from "./vs_shape_def";
+import { VS_Shape } from "./vs_shape_def";
 
 import {traverse} from "./import_model/traverse";
 import { expand_complex_elements} from "./transform";

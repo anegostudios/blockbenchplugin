@@ -5,7 +5,40 @@ import { handleVSTextures } from './texture_handler';
 
 const DEBUG = false;
 
-function logDebug(message: string, ...args: any[]) {
+/**
+ * Minimal shapes for the parts of a .bbmodel this importer reads. Blockbench writes far more than
+ * this; everything here is deliberately loose because the file is user data that may come from an
+ * older Blockbench version, so each field is validated at the point of use rather than trusted.
+ */
+
+/** A face's texture is written either as an index into `textures` or as a texture uuid. */
+type TextureRef = string | number;
+
+interface BBTextureData {
+    name?: string;
+    path?: string;
+    uuid?: string;
+    [key: string]: unknown;
+}
+
+interface BBCubeElement {
+    uuid: string;
+    type: 'cube';
+    [key: string]: unknown;
+}
+
+/** Outliner entries are either a bare element uuid (Blockbench 4.x) or an inline group object. */
+type BBOutlinerItem = string | Record<string, any>;
+
+interface BBModel {
+    elements?: unknown;
+    groups?: unknown;
+    outliner?: unknown;
+    textures?: unknown;
+    [key: string]: unknown;
+}
+
+function logDebug(message: string, ...args: unknown[]) {
     if (DEBUG) console.log(message, ...args);
 }
 
@@ -31,15 +64,15 @@ function buildUuidMap<T extends { uuid?: unknown }>(items: unknown): Map<UUID, T
     return map;
 }
 
-function buildTextureMap(model: BBModel): Map<TextureRef, any> {
-    const map = new Map<TextureRef, any>();
+function buildTextureMap(model: BBModel): Map<TextureRef, Texture> {
+    const map = new Map<TextureRef, Texture>();
 
     for (const [oldIndex, texData] of asArray<BBTextureData>(model.textures).entries()) {
         const texName = typeof texData.name === 'string' ? texData.name : undefined;
         const texPath = typeof texData.path === 'string' ? texData.path : undefined;
 
         const existing = Texture.all.find(
-            (t: any) => (texName && t.name === texName) || (texPath && t.path && t.path === texPath)
+            t => (texName && t.name === texName) || (texPath && t.path && t.path === texPath)
         );
 
         let texture = existing;
@@ -47,9 +80,9 @@ function buildTextureMap(model: BBModel): Map<TextureRef, any> {
             texture = new Texture(texData).add();
 
             // Preserve textureLocation if it exists in the imported data
-            if (typeof (texData as any).textureLocation === 'string') {
-                (texture as any).textureLocation = (texData as any).textureLocation;
-                logDebug(`[Import BB] Set textureLocation: ${(texData as any).textureLocation}`);
+            if (typeof texData.textureLocation === 'string') {
+                texture.textureLocation = texData.textureLocation;
+                logDebug(`[Import BB] Set textureLocation: ${texData.textureLocation}`);
             }
 
             // Load texture from embedded base64 or from disk path (when available)
@@ -68,9 +101,9 @@ function buildTextureMap(model: BBModel): Map<TextureRef, any> {
             if (typeof texData.uv_height === 'number') texture.uv_height = texData.uv_height;
 
             // Update textureLocation if it exists in the imported data and isn't already set
-            if (typeof (texData as any).textureLocation === 'string' && !(texture as any).textureLocation) {
-                (texture as any).textureLocation = (texData as any).textureLocation;
-                logDebug(`[Import BB] Updated textureLocation: ${(texData as any).textureLocation}`);
+            if (typeof texData.textureLocation === 'string' && !texture.textureLocation) {
+                texture.textureLocation = texData.textureLocation;
+                logDebug(`[Import BB] Updated textureLocation: ${texData.textureLocation}`);
             }
 
             logDebug(
@@ -85,7 +118,7 @@ function buildTextureMap(model: BBModel): Map<TextureRef, any> {
     return map;
 }
 
-function remapCubeFaceTextures(cubeProps: Record<string, any>, textureMap: Map<TextureRef, any>) {
+function remapCubeFaceTextures(cubeProps: Record<string, any>, textureMap: Map<TextureRef, Texture>) {
     const faces = cubeProps?.faces;
     if (!faces || !isRecord(faces)) return;
 
@@ -110,8 +143,8 @@ function normalizePaletteSlot(value: unknown): number {
 
 function createCubeFromElementData(
     elemData: BBCubeElement,
-    parentGroup: any,
-    textureMap: Map<TextureRef, any>,
+    parentGroup: Group | null,
+    textureMap: Map<TextureRef, Texture>,
     createdGroups: Set<Group>,
     inheritedPaletteSlot = 0,
 ) {
@@ -137,7 +170,7 @@ function createCubeFromElementData(
     const cubeClothingSlot = cubeProps.clothingSlot;
     if (cubeClothingSlot && typeof cubeClothingSlot === 'string' && cubeClothingSlot.trim() !== '') {
         // Propagate clothingSlot up the hierarchy, but stop at boundaries
-        let currentGroup: any = parentGroup;
+        let currentGroup: OutlinerNode['parent'] | null = parentGroup;
         while (currentGroup && currentGroup instanceof Group && createdGroups.has(currentGroup)) {
             const existingSlot = currentGroup.clothingSlot;
             // If this group already has a clothingSlot, stop propagation (we've hit a boundary)
@@ -158,7 +191,7 @@ function createCubeFromElementData(
     logDebug(`[Import BB] Created cube: ${cube.name ?? '(unnamed)'}`);
 }
 
-function findExistingGroupByName(parentGroup: any, groupName: string): any | null {
+function findExistingGroupByName(parentGroup: Group | null, groupName: string): Group | null {
     if (!groupName) return null;
     const searchRoot = parentGroup ? parentGroup.children || [] : Outliner.root;
 
@@ -173,10 +206,10 @@ function findExistingGroupByName(parentGroup: any, groupName: string): any | nul
 
 function getOrCreateGroup(
     groupSeed: Record<string, any>,
-    parentGroup: any,
+    parentGroup: Group | null,
     createdGroups: Set<Group>,
     inheritedPaletteSlot = 0,
-): { group: any; childPaletteSlot: number } {
+): { group: Group; childPaletteSlot: number } {
     const groupName = typeof groupSeed.name === 'string' ? groupSeed.name : '';
     const hasExternalStepParent = typeof groupSeed.stepParentName === 'string' && groupSeed.stepParentName.trim() !== '';
     const ownPaletteSlot = normalizePaletteSlot(groupSeed.paletteSlot);
@@ -219,7 +252,7 @@ function isCubeElement(value: unknown): value is BBCubeElement {
  * @param filePath The path to the file being imported, used for clothing slot inference.
  */
 export function mergeVSAttachment(content: VS_Shape, filePath?: string) {
-    const elementsBefore = new Set<any>([...Group.all, ...Cube.all]);
+    const elementsBefore = new Set<Group | Cube>([...Group.all, ...Cube.all]);
     handleVSTextures(content);
     // Attachment roots are already expressed in their step parent's local space.
     // Applying the normal block-model [-8, 0, -8] offset corrupts that transform.
@@ -253,11 +286,11 @@ export function mergeBBModel(content: unknown, _filePath: string) {
         const elementByUuid = buildUuidMap<Record<string, any>>(model.elements);
         const groupByUuid = buildUuidMap<Record<string, any>>(model.groups);
         const createdGroups = new Set<Group>();
-        const processChildren = (children: BBOutlinerItem[], parent: any, inheritedPaletteSlot = 0) => {
+        const processChildren = (children: BBOutlinerItem[], parent: Group | null, inheritedPaletteSlot = 0) => {
             for (const child of children) processOutlinerItem(child, parent, inheritedPaletteSlot);
         };
 
-        const tryCreateCubeByUuid = (uuid: UUID, parent: any, inheritedPaletteSlot = 0): boolean => {
+        const tryCreateCubeByUuid = (uuid: UUID, parent: Group | null, inheritedPaletteSlot = 0): boolean => {
             const elemData = elementByUuid.get(uuid);
             if (!isCubeElement(elemData)) return false;
             createCubeFromElementData(elemData, parent, textureMap, createdGroups, inheritedPaletteSlot);
@@ -267,7 +300,7 @@ export function mergeBBModel(content: unknown, _filePath: string) {
         const tryProcessGroupByUuid = (
             uuid: UUID,
             node: Record<string, any>,
-            parent: any,
+            parent: Group | null,
             inheritedPaletteSlot = 0,
         ): boolean => {
             const groupData = groupByUuid.get(uuid);
@@ -282,18 +315,18 @@ export function mergeBBModel(content: unknown, _filePath: string) {
             return true;
         };
 
-        const processUuidStringItem = (uuid: UUID, parent: any, inheritedPaletteSlot = 0) => {
+        const processUuidStringItem = (uuid: UUID, parent: Group | null, inheritedPaletteSlot = 0) => {
             // Blockbench 4.x: element references are UUID strings
             if (tryCreateCubeByUuid(uuid, parent, inheritedPaletteSlot)) return;
         };
 
-        const processInlineGroupNode = (node: Record<string, any>, parent: any, inheritedPaletteSlot = 0) => {
+        const processInlineGroupNode = (node: Record<string, any>, parent: Group | null, inheritedPaletteSlot = 0) => {
             const { group: targetGroup, childPaletteSlot } = getOrCreateGroup(node, parent, createdGroups, inheritedPaletteSlot);
             const children = asArray<BBOutlinerItem>(node.children);
             processChildren(children, targetGroup, childPaletteSlot);
         };
 
-        const processObjectNode = (node: Record<string, any>, parent: any, inheritedPaletteSlot = 0) => {
+        const processObjectNode = (node: Record<string, any>, parent: Group | null, inheritedPaletteSlot = 0) => {
             const uuid = typeof node.uuid === 'string' ? node.uuid : undefined;
 
             // Blockbench 5.x+: outliner node references separate `elements` / `groups` lists by UUID.
@@ -306,7 +339,7 @@ export function mergeBBModel(content: unknown, _filePath: string) {
             processInlineGroupNode(node, parent, inheritedPaletteSlot);
         };
 
-        const processOutlinerItem = (item: BBOutlinerItem, parent: any, inheritedPaletteSlot = 0) => {
+        const processOutlinerItem = (item: BBOutlinerItem, parent: Group | null, inheritedPaletteSlot = 0) => {
             if (typeof item === 'string') return processUuidStringItem(item, parent, inheritedPaletteSlot);
             if (!isRecord(item)) return;
             return processObjectNode(item, parent, inheritedPaletteSlot);

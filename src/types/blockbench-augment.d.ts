@@ -6,7 +6,16 @@
  * https://github.com/JannisX11/blockbench/blob/master/js/animations/animation_codec.ts
  */
 
+import type { VS_Animation } from '../vs_shape_def';
+
 declare global {
+    interface _Animation {
+        vs_code?: string;
+        vs_onActivityStopped?: VS_Animation['onActivityStopped'] | '';
+        vs_onAnimationEnd?: VS_Animation['onAnimationEnd'] | '';
+        vs_library_ref?: string;
+    }
+
     /** The file-like object handed to `AnimationCodec.loadFile`. */
     interface AnimationCodecFile {
         path: string;
@@ -20,7 +29,7 @@ declare global {
         pickFile?(): void;
         importFile?(file: AnimationCodecFile, auto_loaded?: boolean): _Animation[];
         loadFile?(file: AnimationCodecFile, animation_filter?: string[]): _Animation[];
-        reloadFile?(file: AnimationCodecFile): void;
+        reloadFile?(path: string): void;
         reloadAnimation?(animation: _Animation): void;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         compileAnimation?(animation: _Animation): any;
@@ -53,6 +62,14 @@ declare global {
     interface ModelFormat {
         animation_codec?: AnimationCodec;
     }
+
+    /**
+     * Blockbench's desktop-only escape hatch to Node's require. Missing from blockbench-types,
+     * so every call site otherwise needs its own @ts-expect-error.
+     */
+    function requireNativeModule(name: 'fs'): typeof import('fs');
+    function requireNativeModule(name: 'path'): typeof import('path');
+    function requireNativeModule(name: string): any;
 }
 
 export {};

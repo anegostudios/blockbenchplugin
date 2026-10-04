@@ -3,9 +3,7 @@ import * as PACKAGE from "../package.json";
 import { is_vs_project } from "./util";
 import JSON5 from "json5";
 
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const path = requireNativeModule('path');
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
 const fs = requireNativeModule('fs');
 
 
@@ -193,7 +191,6 @@ const roundTripDiffAction = createAction(`${PACKAGE.name}:roundTripDiff`, {
                 const test_folder = form_result.select_folder;
                 const test_files: string[] = fs.readdirSync(test_folder, { encoding: "utf-8" });
                 let totalFiles = 0;
-                let filesWithDiffs = 0;
                 let totalDiffs = 0;
 
                 for (const test_file of test_files) {
@@ -239,7 +236,6 @@ const roundTripDiffAction = createAction(`${PACKAGE.name}:roundTripDiff`, {
                             const diffs = deepCompare(originalForCompare, reexportForCompare, '$');
 
                             if (diffs.length > 0) {
-                                filesWithDiffs++;
                                 totalDiffs += diffs.length;
                                 console.group(`%c DIFFS in ${test_file} (${diffs.length} differences)`, 'color: orange; font-weight: bold');
                                 for (const diff of diffs.slice(0, 50)) {
