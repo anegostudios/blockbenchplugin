@@ -32,7 +32,6 @@ BBPlugin.register(PACKAGE.name, {
     min_version: "5.0.0",
     repository: PACKAGE.repository.url,
     tags: ["Vintage Story"],
-    about: PACKAGE.description,
     onload() {
         events.LOAD.dispatch();
     },

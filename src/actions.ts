@@ -5,8 +5,8 @@ import { is_vs_project } from "./util";
 import { im } from "./import";
 import { is_backdrop_project } from "./util/misc";
 import { ex } from "./export";
+import { fs } from "./util/native";
 
-const fs = requireNativeModule('fs');
 const path = requireNativeModule('path');
 
 const export_action = createAction(`${PACKAGE.name}:export_vs`, {

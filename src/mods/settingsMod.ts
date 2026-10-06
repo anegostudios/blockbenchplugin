@@ -1,6 +1,6 @@
 import { createBlockbenchMod } from "../util/moddingTools";
 import * as PACKAGE from "../../package.json";
-import * as process from "process";
+import { get_game_path } from "../util/native";
 
 declare var Setting: any;
 declare var Settings: any;
@@ -17,7 +17,7 @@ createBlockbenchMod(
             category: "general",
             type: "click",
             icon: "fa-folder-plus",
-            value: Settings.get("asset_path") || process.env.VINTAGE_STORY || "",
+            value: "",
             click() {
                 new Dialog("gamePathSelect", {
                     title: "Select Game Path",
@@ -25,7 +25,7 @@ createBlockbenchMod(
                         path: {
                             label: "Path to your game folder",
                             type: "folder",
-                            value: Settings.get("game_path") || process.env.VINTAGE_STORY || "",
+                            value: get_game_path(),
                         }
                     },
                     onConfirm(formResult) {
@@ -135,7 +135,7 @@ createBlockbenchMod(
             name: "Apply Model Offset",
             description: "Apply [8, 0, 8] offset to exported models for Vintage Story engine centering. Disable if your models are already positioned correctly.",
             category: "general",
-            type: "checkbox",
+            type: "toggle",
             value: true
         });
         return setting;
@@ -152,7 +152,7 @@ createBlockbenchMod(
             name: "Export Texture Files",
             description: "Automatically save texture files to disk when exporting models. Disable to only include texture references in the JSON without saving the actual texture files.",
             category: "general",
-            type: "checkbox",
+            type: "toggle",
             value: false
         });
         return setting;

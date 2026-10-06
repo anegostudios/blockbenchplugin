@@ -77,9 +77,16 @@ declare global {
      * Blockbench's desktop-only escape hatch to Node's require. Missing from blockbench-types,
      * so every call site otherwise needs its own @ts-expect-error.
      */
-    function requireNativeModule(name: 'fs'): typeof import('fs');
-    function requireNativeModule(name: 'path'): typeof import('path');
-    function requireNativeModule(name: string): any;
+    interface NativeModuleOptions {
+        message?: string;
+        optional?: boolean;
+        show_permission_dialog?: boolean;
+        scope?: string;
+    }
+    function requireNativeModule(name: 'fs', options?: NativeModuleOptions): typeof import('fs') | undefined;
+    function requireNativeModule(name: 'process', options?: NativeModuleOptions): typeof import('process') | undefined;
+    function requireNativeModule(name: 'path', options?: NativeModuleOptions): typeof import('path');
+    function requireNativeModule(name: string, options?: NativeModuleOptions): any;
 }
 
 export {};

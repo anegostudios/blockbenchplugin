@@ -5,6 +5,24 @@ import icon from "../icon.png";
 export function create_format(): ModelFormat { 
     const format =  new ModelFormat("formatVS", {
         name: "Vintage Story Base Format",
+        description: "Vintage Story Format",
+        target: "Vintage Story",
+        format_page: {
+            content: [
+                { type: "text", text: "Import, edit, and export models in the Vintage Story shape format, including animations and attachment points." },
+                { type: "h3", text: "Getting started" },
+                {
+                    type: "text",
+                    text: [
+                        "* Open a Vintage Story shape JSON file with **File > Open Model**.",
+                        "* Create a model with **File > New > Vintage Story Base Format**.",
+                        "* Use the Vintage Story actions in the **Import** and **Export** menus to exchange shape files.",
+                        "* The plugin also provides attachment tools and a **VS Face Properties** panel for glow, reflective mode, and wind properties.",
+                    ].join("\n"),
+                },
+                { type: "text", text: "[Source repository](https://github.com/anegostudios/blockbenchplugin) · [Report an issue](https://github.com/anegostudios/blockbenchplugin/issues)" },
+            ],
+        },
         codec: codecVS,
         icon: icon,
         box_uv: false,

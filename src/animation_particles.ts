@@ -1,7 +1,7 @@
 import { parse_model_location } from "./animation_library_paths";
 import { is_vs_project } from "./util";
+import { fs } from "./util/native";
 
-const fs = requireNativeModule('fs');
 const nodePath = requireNativeModule('path');
 
 declare var WinterskyScene: any;
