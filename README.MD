@@ -1,3 +1,5 @@
+![Vintage Story Format Support](header.png)
+
 # What this is:
 
 A Blockbench (BB) plugin that handles importing and exporting from and to the Vintage Story (VS) shape format to make it a viable alternative to Vintage Story Model Creator (VSMC). The VS shape format is similar to the BB format but still different in a few key aspects.

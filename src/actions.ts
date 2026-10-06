@@ -1,5 +1,6 @@
 import { createAction } from "./util/moddingTools";
 import * as PACKAGE from "../package.json";
+import icon from "../icon.png";
 import { is_vs_project } from "./util";
 import { im } from "./import";
 import { is_backdrop_project } from "./util/misc";
@@ -10,7 +11,7 @@ const path = requireNativeModule('path');
 
 const export_action = createAction(`${PACKAGE.name}:export_vs`, {
     name: 'Export into VS Format',
-    icon: 'icon.png',
+    icon: icon,
     condition() {
         return is_vs_project(Project);
     },
@@ -48,7 +49,7 @@ MenuBar.addAction(export_action, 'file.export');
 
 const import_action = createAction(`${PACKAGE.name}:import_vs`, {
     name: 'Import from VS Format',
-    icon: 'icon.png',
+    icon: icon,
     condition() {
         return is_vs_project(Project);
     },
@@ -66,7 +67,7 @@ MenuBar.addAction(import_action, 'file.import');
 
 const import_backdrop_action = createAction(`${PACKAGE.name}:import_backdrop_action`, {
     name: 'Import Backdrop from VS Format',
-    icon: 'icon.png',
+    icon: icon,
     condition() {
         return is_vs_project(Project);
     },

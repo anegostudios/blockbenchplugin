@@ -1,11 +1,12 @@
 import { codecVS } from "./codec";
 import { vsAnimationCodec } from "./animation_codec";
+import icon from "../icon.png";
 
 export function create_format(): ModelFormat { 
     const format =  new ModelFormat("formatVS", {
         name: "Vintage Story Base Format",
         codec: codecVS,
-        icon: "icon.png",
+        icon: icon,
         box_uv: false,
         optional_box_uv: false,
         single_texture: false,
