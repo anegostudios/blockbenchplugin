@@ -1,4 +1,5 @@
 import { VS_FACE_PROPS } from "../../property";
+import { apply_extra_props } from "../../preserved_props";
 import { VS_Direction, VS_Face } from "../../vs_shape_def";
 
 /**
@@ -78,6 +79,9 @@ export function process_faces(faces: Partial<Record<CardinalDirection, CubeFace>
 
             processed_face[prop_name] = value;
         }
+
+        apply_extra_props(processed_face, face.vs_extra_props);
+
         processed_faces[direction] = new oneLiner(processed_face);
     }
     return processed_faces;

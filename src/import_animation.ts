@@ -2,6 +2,7 @@ import * as util from "./util";
 import { VS_Animation, VS_AnimationKey, VS_AnimationNumericField, VS_AnimationInterpolationField, VS_KeyFrameInterpolation } from "./vs_shape_def";
 import { particle_data_point } from "./animation_particles";
 import { sound_data_point } from "./animation_sounds";
+import { collect_extras } from "./preserved_props";
 
 /**
  * Creates one Blockbench animation from a VS animation definition and returns it.
@@ -34,6 +35,8 @@ export function create_animation(vsAnimation: VS_Animation, path?: string, saved
     animation.vs_code = vsAnimation.code;
     animation.vs_onActivityStopped = vsAnimation.onActivityStopped;
     animation.vs_onAnimationEnd = vsAnimation.onAnimationEnd;
+
+    store_animation_extras(animation, vsAnimation);
 
     // Per-bone, per-channel sorted frame lists so bezier handle widths can be placed against the
     // correct segment (mirrors the engine's per-channel keyframe walk).
@@ -152,6 +155,40 @@ const IMPORT_CHANNELS: Record<BBImportChannel, ImportChannelConfig> = {
         default: 1,
     },
 };
+
+const ANIMATION_KNOWN_KEYS = new Set([
+    'name', 'code', 'quantityframes', 'onActivityStopped', 'onAnimationEnd', 'keyframes',
+]);
+const KEYFRAME_KNOWN_KEYS = new Set(['frame', 'elements', 'textures', 'particles', 'sounds']);
+const ANIMATION_KEY_KNOWN_KEYS = new Set<string>(
+    (Object.keys(IMPORT_CHANNELS) as BBImportChannel[]).flatMap(channel => {
+        const cfg = IMPORT_CHANNELS[channel];
+        return [cfg.interp, ...cfg.value, ...cfg.tangentIn, ...cfg.tangentOut, ...cfg.widthIn, ...cfg.widthOut];
+    }) as string[]
+);
+
+function store_animation_extras(animation: _Animation, vsAnimation: VS_Animation) {
+    const animationExtras = collect_extras(vsAnimation, ANIMATION_KNOWN_KEYS);
+    if (animationExtras) animation.vs_extra_props = animationExtras;
+
+    const keyframeExtras: Record<string, Record<string, unknown>> = {};
+    const elementExtras: Record<string, Record<string, Record<string, unknown>>> = {};
+
+    vsAnimation.keyframes.forEach(vsKeyframe => {
+        const frame = String(vsKeyframe.frame);
+        const extras = collect_extras(vsKeyframe, KEYFRAME_KNOWN_KEYS);
+        if (extras) keyframeExtras[frame] = extras;
+
+        for (const boneName in vsKeyframe.elements) {
+            const elemExtras = collect_extras(vsKeyframe.elements[boneName], ANIMATION_KEY_KNOWN_KEYS);
+            if (!elemExtras) continue;
+            (elementExtras[boneName] = elementExtras[boneName] || {})[frame] = elemExtras;
+        }
+    });
+
+    if (Object.keys(keyframeExtras).length) animation.vs_extra_keyframe_props = keyframeExtras;
+    if (Object.keys(elementExtras).length) animation.vs_extra_element_props = elementExtras;
+}
 
 type ChannelFrameMap = Record<string, Record<BBImportChannel, number[]>>;
 

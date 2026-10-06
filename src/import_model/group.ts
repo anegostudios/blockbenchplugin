@@ -1,6 +1,7 @@
 import { VS_Element } from "../vs_shape_def";
 import * as util from "../util";
 import {VS_GROUP_PROPS, VS_CUBE_PROPS } from "../property";
+import { collect_element_extras } from "../preserved_props";
 import { process_attachment_points } from "./locator";
 import { getActiveSlotNames } from "../attachments/presets";
 
@@ -62,6 +63,11 @@ export function process_group(parent: Group | null, object_space_pos: [number,nu
         if (vsElement[prop_name] !== undefined) {
             group[prop_name] = vsElement[prop_name];
         }
+    }
+
+    const extras = collect_element_extras(vsElement, true);
+    if (extras) {
+        group.vs_extra_props = extras;
     }
 
     // If this is a top-level group with stepParentName and no clothingSlot set, infer from path

@@ -2,6 +2,7 @@ import { VS_Animation, VS_AnimationKey, VS_AnimationNumericField, VS_AnimationIn
 import { sound_from_data_point } from "./animation_sounds";
 import * as util from "./util";
 import { is_backdrop_project } from "./util/misc";
+import { apply_extra_props } from "./preserved_props";
 
 type BBChannel = 'position' | 'rotation' | 'scale';
 
@@ -175,6 +176,22 @@ function applyInterpolationToKey(
     }
 }
 
+const CHANNEL_AXIS_NEUTRALS: [[keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey], number][] = [
+    [['offsetX', 'offsetY', 'offsetZ'], 0],
+    [['rotationX', 'rotationY', 'rotationZ'], 0],
+    [['stretchX', 'stretchY', 'stretchZ'], 1],
+];
+
+function pad_partial_channels(elem: VS_AnimationKey) {
+    for (const [axes, neutral] of CHANNEL_AXIS_NEUTRALS) {
+        if (axes.some(axis => elem[axis] !== undefined)) {
+            for (const axis of axes) {
+                if (elem[axis] === undefined) (elem as any)[axis] = neutral;
+            }
+        }
+    }
+}
+
 /**
  * Exports Blockbench animations to the Vintage Story animation format.
  * @returns An array of VS animations.
@@ -255,9 +272,11 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
                         applyInterp();
                         break;
                     case 'scale':
-                        if (scaleNeedsAllKeys || value.x !== 1) elem.stretchX = value.x;
-                        if (scaleNeedsAllKeys || value.y !== 1) elem.stretchY = value.y;
-                        if (scaleNeedsAllKeys || value.z !== 1) elem.stretchZ = value.z;
+                        if (scaleNeedsAllKeys || value.x !== 1 || value.y !== 1 || value.z !== 1) {
+                            elem.stretchX = value.x;
+                            elem.stretchY = value.y;
+                            elem.stretchZ = value.z;
+                        }
                         applyInterp();
                         break;
                 }
@@ -304,6 +323,15 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
     });
 
     normalize_terminal_keyframe(keyframes, baseFrameCount);
+
+    for (const keyframe of Object.values(keyframes)) {
+        const frame = String(keyframe.frame);
+        apply_extra_props(keyframe, animation.vs_extra_keyframe_props?.[frame]);
+        for (const [bone_name, elem] of Object.entries(keyframe.elements)) {
+            apply_extra_props(elem, animation.vs_extra_element_props?.[bone_name]?.[frame]);
+            pad_partial_channels(elem);
+        }
+    }
 
     // Wraps all animation elements into oneLiner wrappers (after all animators are processed)
     for(const keyframe of Object.values(keyframes)) {
@@ -375,6 +403,9 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
     }
 
     if (vsAnimation.keyframes.length === 0) return null;
+
+    apply_extra_props(vsAnimation, animation.vs_extra_props);
+
     if (hadCatmullConversion && catmullConverted) catmullConverted.push(animation.name);
     return vsAnimation;
 }

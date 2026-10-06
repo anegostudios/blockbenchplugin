@@ -4,6 +4,7 @@ import * as util from '../util';
 import { VS_Element } from '../vs_shape_def';
 import { QUICK_MESSAGE_DURATION } from './constants';
 import { process_cube } from '../export_model/cube';
+import { apply_extra_props } from '../preserved_props';
 import { visit_tree } from '../util/element_tree';
 import { composeEulerXYZ, rebaseAttachmentRoot } from './attachment_transform';
 import type { AttachmentElementFrame, StepParentFrame, Vector3Tuple } from './attachment_transform';
@@ -366,6 +367,8 @@ function process_attachment_group(
             vsElement[prop_name] = exportedValue;
         }
     }
+
+    apply_extra_props(vsElement, node.vs_extra_props);
 
     // Process child locators as attachment points
     const locators = node.children.filter(child => child instanceof Locator) as Array<Locator>;

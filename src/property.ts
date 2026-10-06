@@ -13,7 +13,7 @@ export const VS_PROJECT_PROPS = [
     new Property(ModelProject, "boolean", "vsFormatConverted", { exposed: false, }),
 ];
 
-type InternalPropertyType = 'vector' | 'vector2' | 'object' | 'boolean';
+type InternalPropertyType = 'vector' | 'vector2' | 'object' | 'boolean' | 'string';
 
 function isFiniteVector(value: unknown, length: 2 | 3): boolean {
     return Array.isArray(value)
@@ -187,6 +187,7 @@ registerOptionalInternalProperty(Group, 'vector', 'vs_group_to', value => isFini
 registerOptionalInternalProperty(Group, 'boolean', 'vs_has_rotation_origin', value => value === true);
 registerOptionalInternalProperty(Group, 'object', 'vs_zero_size_faces', isNonEmptyRecord);
 registerOptionalInternalProperty(Group, 'vector2', 'vs_uv', value => isFiniteVector(value, 2));
+registerOptionalInternalProperty(Group, 'object', 'vs_extra_props', isNonEmptyRecord);
 
 export const VS_CUBE_PROPS = [
     new Property(Cube, "string", "stepParentName", {
@@ -361,6 +362,7 @@ registerStepParentTransformProperties(Cube);
 
 registerOptionalInternalProperty(Cube, 'boolean', 'vs_has_rotation_origin', value => value === true);
 registerOptionalInternalProperty(Cube, 'vector2', 'vs_uv', value => isFiniteVector(value, 2));
+registerOptionalInternalProperty(Cube, 'object', 'vs_extra_props', isNonEmptyRecord);
 
 export const VS_TEXTURE_PROPS = [
     new Property(Texture, "string", "textureLocation", {
@@ -393,6 +395,21 @@ export const VS_FACE_PROPS = [
     new Property(CubeFace, "boolean", "snapUv", { default: false }),
 ];
 
+registerOptionalInternalProperty(CubeFace, 'object', 'vs_extra_props', isNonEmptyRecord);
+registerOptionalInternalProperty(Locator, 'object', 'vs_extra_props', isNonEmptyRecord);
+registerOptionalInternalProperty(ModelProject, 'object', 'vs_extra_props', isNonEmptyRecord);
+registerOptionalInternalProperty(ModelProject, 'object', 'vs_extra_editor_props', isNonEmptyRecord);
+registerOptionalInternalProperty(ModelProject, 'object', 'vs_textureSizes', isNonEmptyRecord);
+
+const isNonEmptyString = (value: unknown) => typeof value === 'string' && value !== '';
+registerOptionalInternalProperty(Animation, 'string', 'vs_code', isNonEmptyString);
+registerOptionalInternalProperty(Animation, 'string', 'vs_onActivityStopped', isNonEmptyString);
+registerOptionalInternalProperty(Animation, 'string', 'vs_onAnimationEnd', isNonEmptyString);
+registerOptionalInternalProperty(Animation, 'string', 'vs_library_ref', isNonEmptyString);
+registerOptionalInternalProperty(Animation, 'object', 'vs_extra_props', isNonEmptyRecord);
+registerOptionalInternalProperty(Animation, 'object', 'vs_extra_keyframe_props', isNonEmptyRecord);
+registerOptionalInternalProperty(Animation, 'object', 'vs_extra_element_props', isNonEmptyRecord);
+
 /**
  * Extend Blockbench types with our custom properties
  */
@@ -404,6 +421,7 @@ declare global {
         windData?: [number, number, number, number];
         autoUv?: boolean;
         snapUv?: boolean;
+        vs_extra_props?: Record<string, unknown>;
     }
 
     interface Texture {
@@ -417,6 +435,9 @@ declare global {
         collapsedPaths?: string;
         singleTexture?: boolean;
         vsFormatConverted?: boolean;
+        vs_extra_props?: Record<string, unknown>;
+        vs_extra_editor_props?: Record<string, unknown>;
+        vs_textureSizes?: Record<string, [number, number]>;
     }
 
     interface Group {
@@ -433,6 +454,7 @@ declare global {
         vs_has_rotation_origin?: boolean;
         vs_zero_size_faces?: Partial<Record<VS_Direction, VS_Face>>;
         vs_uv?: [number, number];
+        vs_extra_props?: Record<string, unknown>;
     }
 
     interface Cube {
@@ -454,11 +476,13 @@ declare global {
         vs_step_parent_rotation?: [number, number, number];
         vs_has_rotation_origin?: boolean;
         vs_uv?: [number, number];
+        vs_extra_props?: Record<string, unknown>;
     }
 
     interface Locator {
         rotationX?: number;
         rotationY?: number;
         rotationZ?: number;
+        vs_extra_props?: Record<string, unknown>;
     }
 }

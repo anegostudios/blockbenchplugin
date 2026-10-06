@@ -1,6 +1,7 @@
 import { VS_Element } from "../../vs_shape_def";
 import * as util from "../../util";
 import { VS_CUBE_PROPS } from "../../property";
+import { collect_element_extras } from "../../preserved_props";
 
 /**
  * Creates a new Blockbench Cube object.
@@ -35,6 +36,11 @@ export function create_cube(object_space_pos: [number,number,number], vsElement:
         if (vsElement[prop_name] !== undefined) {
             cube[prop_name] = vsElement[prop_name];
         }
+    }
+
+    const extras = collect_element_extras(vsElement);
+    if (extras) {
+        cube.vs_extra_props = extras;
     }
 
     return cube;

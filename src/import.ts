@@ -3,6 +3,7 @@ import { import_model } from "./import_model";
 import { import_animations } from "./import_animation";
 import { VS_Shape } from "./vs_shape_def";
 import { VS_PROJECT_PROPS } from "./property";
+import { collect_editor_extras, collect_shape_extras } from "./preserved_props";
 import { load_back_drop_shape } from "./util/misc";
 import { reference_to_candidate_paths } from "./animation_library_paths";
 import { vsAnimationCodec } from "./animation_codec";
@@ -21,7 +22,6 @@ export function im(content: VS_Shape, _path: string, asBackdrop: boolean) {
 
     // Store original textureSizes for round-trip (includes entries for textures not in the textures map)
     if (content.textureSizes) {
-        // @ts-expect-error: custom property for round-trip fidelity
         Project.vs_textureSizes = { ...content.textureSizes };
     }
 
@@ -44,6 +44,15 @@ export function im(content: VS_Shape, _path: string, asBackdrop: boolean) {
                 const prop_name = prop.name;
                 Project[prop_name] = content.editor[prop_name];
             }
+        }
+
+        const shape_extras = collect_shape_extras(content);
+        if (shape_extras) {
+            Project.vs_extra_props = shape_extras;
+        }
+        const editor_extras = collect_editor_extras(content.editor);
+        if (editor_extras) {
+            Project.vs_extra_editor_props = editor_extras;
         }
 
         if (Project.backDropShape && Project.backDropShape !== "") {

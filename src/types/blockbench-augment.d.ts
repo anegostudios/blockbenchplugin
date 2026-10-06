@@ -55,6 +55,16 @@ declare global {
         static getCodec(animation?: AnimationItem): AnimationCodec;
     }
 
+    interface _Animation {
+        vs_code?: string;
+        vs_onActivityStopped?: import('../vs_shape_def').VS_OnActivityStopped;
+        vs_onAnimationEnd?: import('../vs_shape_def').VS_OnAnimationEnd;
+        vs_library_ref?: string;
+        vs_extra_props?: Record<string, unknown>;
+        vs_extra_keyframe_props?: Record<string, Record<string, unknown>>;
+        vs_extra_element_props?: Record<string, Record<string, Record<string, unknown>>>;
+    }
+
     interface FormatOptions {
         animation_codec?: AnimationCodec;
     }

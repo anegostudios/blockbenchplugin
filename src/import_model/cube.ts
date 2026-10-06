@@ -1,4 +1,5 @@
 import { VS_FACE_PROPS } from "../property";
+import { collect_face_extras } from "../preserved_props";
 import { VS_Element } from "../vs_shape_def";
 import {process_faces} from "./cube/faces";
 import {create_cube} from "./cube/factory";
@@ -34,6 +35,11 @@ export function process_cube(parent: Group | null, object_space_pos: [number,num
                 if (element_face[prop_name] !== undefined) {
                     cube_face[prop_name] = element_face[prop_name];
                 }
+            }
+
+            const face_extras = collect_face_extras(vsElement.faces[direction]);
+            if (face_extras) {
+                cube.faces[direction].vs_extra_props = face_extras;
             }
         }
     }

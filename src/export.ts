@@ -2,6 +2,7 @@ import {export_model} from "./export_model";
 import { compile_animation_library } from "./export_animation";
 import { VS_EditorSettings, VS_Shape } from "./vs_shape_def";
 import { VS_PROJECT_PROPS } from "./property";
+import { apply_extra_props } from "./preserved_props";
 import { resolveTextureLocation, warnTextureReadErrors } from "./export_textures";
 import { path_to_reference } from "./animation_library_paths";
 
@@ -104,7 +105,7 @@ export function ex(options): VS_Shape {
 
     // Populate Texture Sizes — start with stored sizes from import, then override with live textures
     const textureSizes: Record<string, [number,number]> = {
-        ...((Project as any).vs_textureSizes || {})
+        ...(Project.vs_textureSizes || {})
     };
     for (const texture of Texture.all) {
         if (texture.uv_width && texture.uv_height) {
@@ -168,6 +169,8 @@ export function ex(options): VS_Shape {
         editor[prop_name] = Project[prop_name];
     }
 
+    apply_extra_props(editor, Project.vs_extra_editor_props);
+
     const data: VS_Shape = {
         editor: editor,
         textureWidth: Project.texture_width,
@@ -181,6 +184,8 @@ export function ex(options): VS_Shape {
     if (libraryRefs.length > 0) {
         data.animationLibraries = libraryRefs;
     }
+
+    apply_extra_props(data, Project.vs_extra_props);
 
     warnTextureReadErrors(unresolvedReadErrors);
     return data;

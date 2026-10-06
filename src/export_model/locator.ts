@@ -1,5 +1,6 @@
 import { VS_AttachmentPoint } from "../vs_shape_def";
 import * as util from "../util";
+import { apply_extra_props } from "../preserved_props";
 
 /**
  * Processes Blockbench Locators and converts them to VS attachment points.
@@ -47,6 +48,8 @@ export function process_locators(
             rotationY: rotation[1].toString(),
             rotationZ: rotation[2].toString()
         };
+
+        apply_extra_props(attachmentPoint, (locator as any).vs_extra_props);
 
         attachmentPoints.push(attachmentPoint);
     }

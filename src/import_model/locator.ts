@@ -1,5 +1,6 @@
 import { VS_AttachmentPoint } from "../vs_shape_def";
 import * as util from "../util";
+import { collect_attachment_point_extras } from "../preserved_props";
 
 /**
  * Processes VS attachment points and creates Blockbench Locators.
@@ -36,6 +37,11 @@ export function process_attachment_points(
         locator.rotationX = parseFloat(ap.rotationX) || 0;
         locator.rotationY = parseFloat(ap.rotationY) || 0;
         locator.rotationZ = parseFloat(ap.rotationZ) || 0;
+
+        const extras = collect_attachment_point_extras(ap);
+        if (extras) {
+            (locator as any).vs_extra_props = extras;
+        }
 
         if (asBackdrop) {
             locator.locked = true;
