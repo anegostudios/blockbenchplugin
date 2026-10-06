@@ -17,6 +17,7 @@ function init() {
     const attachment_mode = new Mode('attachments', {
         name: 'Attachments',
         onSelect: () => {
+            panel.moveTo('right_bar', Panels.vs_face_properties, true);
             findAttachments();
         }
     });
