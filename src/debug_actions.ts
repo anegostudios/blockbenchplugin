@@ -2,9 +2,9 @@ import { createAction } from "./util/moddingTools";
 import * as PACKAGE from "../package.json";
 import { is_vs_project } from "./util";
 import JSON5 from "json5";
+import { fs } from "./util/native";
 
 const path = requireNativeModule('path');
-const fs = requireNativeModule('fs');
 
 
 const reExportAction = createAction(`${PACKAGE.name}:reExport`, {

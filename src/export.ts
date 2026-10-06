@@ -5,8 +5,8 @@ import { VS_PROJECT_PROPS } from "./property";
 import { apply_extra_props } from "./preserved_props";
 import { resolveTextureLocation, warnTextureReadErrors } from "./export_textures";
 import { path_to_reference } from "./animation_library_paths";
+import { fs } from "./util/native";
 
-const fs = requireNativeModule('fs');
 const path = requireNativeModule('path');
 
 declare var Settings: any;

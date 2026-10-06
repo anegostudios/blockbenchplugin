@@ -7,8 +7,8 @@ import { collect_editor_extras, collect_shape_extras } from "./preserved_props";
 import { load_back_drop_shape } from "./util/misc";
 import { reference_to_candidate_paths } from "./animation_library_paths";
 import { vsAnimationCodec } from "./animation_codec";
+import { fs } from "./util/native";
 
-const fs = requireNativeModule('fs');
 
 export function im(content: VS_Shape, _path: string, asBackdrop: boolean) {
 

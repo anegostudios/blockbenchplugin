@@ -8,8 +8,8 @@ import { apply_extra_props } from '../preserved_props';
 import { visit_tree } from '../util/element_tree';
 import { composeEulerXYZ, rebaseAttachmentRoot } from './attachment_transform';
 import type { AttachmentElementFrame, StepParentFrame, Vector3Tuple } from './attachment_transform';
+import { fs } from "../util/native";
 
-const fs = requireNativeModule('fs');
 
 const DEBUG = false; // Enable debug to see what's being exported
 

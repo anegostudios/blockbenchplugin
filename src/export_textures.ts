@@ -1,8 +1,8 @@
 import { collect_tree_data, flatten } from "./util/element_tree";
 import { VS_Element } from "./vs_shape_def";
 import type { Dirent } from "fs";
+import { fs } from "./util/native";
 
-const fs = requireNativeModule('fs');
 const path = requireNativeModule('path');
 
 /**

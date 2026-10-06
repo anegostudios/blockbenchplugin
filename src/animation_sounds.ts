@@ -1,8 +1,8 @@
 import { parse_model_location } from "./animation_library_paths";
 import { is_vs_project } from "./util";
 import { VS_AnimationSound } from "./vs_shape_def";
+import { fs } from "./util/native";
 
-const fs = requireNativeModule('fs');
 
 const SOUND_EXTENSIONS = ['.ogg', '.wav', '.mp3'];
 

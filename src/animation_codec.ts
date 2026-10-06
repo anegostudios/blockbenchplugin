@@ -22,8 +22,8 @@ import { create_animation } from "./import_animation";
 import { VS_Animation, VS_AnimationLibrary } from "./vs_shape_def";
 import { parse_model_location, basename_no_ext } from "./animation_library_paths";
 import JSON5 from "json5";
+import { fs } from "./util/native";
 
-const fs = requireNativeModule('fs');
 
 // Remembers each loaded library file's optional `code`/`name` so re-saving preserves them
 // (the engine keys animations by their own `code`, so these are cosmetic, but preserving

@@ -3,7 +3,7 @@
   "name": "vintagestory",
   "title": "Vintage Story Format Support",
   "description": "A Blockbench plugin that adds support for Vintage Story models",
-  "version": "0.12.1",
+  "version": "0.12.2",
   "author": {
     "name": "Anego Studios",
     "email": "office@anegostudios.com",

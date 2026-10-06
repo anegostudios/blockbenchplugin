@@ -42,4 +42,7 @@ async function build() {
     }
 }
 
-build().then(() => copyFileSync("./icon.png", "./dist/icon.png"))
+build().then(() => {
+    copyFileSync("./icon.png", "./dist/icon.png");
+    copyFileSync("./about.md", "./dist/about.md");
+})

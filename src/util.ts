@@ -1,5 +1,5 @@
-import * as fs from "fs";
 import * as path from "path";
+import { fs, get_game_path } from "./util/native";
 declare const THREE: typeof import('three');
 
 export const fps = 30;
@@ -8,7 +8,7 @@ export const get_texture_location = function (domain, rel_path) {
 
     for (const base_mod_path of ["creative", "game", "survival"]) {
         const f = path.posix.format({
-            root: Settings.get("game_path") + path.sep + "assets" + path.sep + base_mod_path + path.sep + "textures" + path.sep,
+            root: get_game_path() + path.sep + "assets" + path.sep + base_mod_path + path.sep + "textures" + path.sep,
             name: rel_path,
             ext: '.png',
         });
