@@ -1,10 +1,12 @@
+![Vintage Story Format Support](header.png)
+
 # What this is:
 
 A Blockbench (BB) plugin that handles importing and exporting from and to the Vintage Story (VS) shape format to make it a viable alternative to Vintage Story Model Creator (VSMC). The VS shape format is similar to the BB format but still different in a few key aspects.
 
 # How to install:
 
-Open Blockbench and select "File->Plugins..." then drag-and-drop the vs_plugin.js  file into the window that opens and you are ready to go.
+Open Blockbench and select "File->Plugins..." then drag-and-drop the vintagestory.js  file into the window that opens and you are ready to go.
 
 # Basic use:
 
@@ -30,7 +32,7 @@ npm install
 npm run gen_schema
 npm run build
 ```
-This should build the plugin with webpack into .../dist/vs_plugin.js which can then be imported to BB.
+This should build the plugin with webpack into .../dist/vintagestory.js which can then be imported to BB.
 You only need to rerun gen_schema when vs_shape_defs.ts has changed, otherwise further builds only require running
 ```console
 npm run build

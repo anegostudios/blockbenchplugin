@@ -8,20 +8,6 @@ import type { Vector3Tuple } from './attachment_transform';
 
 const DEBUG = false;
 
-function logDebug(message: string, ...args: any[]) {
-    if (DEBUG) console.log(message, ...args);
-}
-
-function getGroupPath(group: Group): string {
-    const parts: string[] = [];
-    let current: any = group;
-    while (current && current instanceof Group) {
-        parts.unshift(current.name || 'Unnamed');
-        current = current.parent;
-    }
-    return parts.join(' > ') || group.name || 'Unknown';
-}
-
 /**
  * Finds a matching group in the existing model based on clothing slot and optional name.
  */
@@ -340,14 +326,18 @@ function placeStepParentWrappers(newElements: any[], newElementsSet: Set<any>, l
         const worldRotation = getElementBindRotation(element);
         const liveSocketFrom = getSocketFrom(target);
         const liveSocketRotation = getElementBindRotation(target);
+        // Read into locals so the isFiniteVector3 guards narrow away the undefined, which they
+        // cannot do through a property access.
+        const storedFrom = element.vs_step_parent_origin;
+        const storedRotation = element.vs_step_parent_rotation;
         const hasStoredFrame = element.vs_has_step_parent_transform === true
-            && isFiniteVector3(element.vs_step_parent_origin)
-            && isFiniteVector3(element.vs_step_parent_rotation);
+            && isFiniteVector3(storedFrom)
+            && isFiniteVector3(storedRotation);
         const authoredSocketFrom = hasStoredFrame
-            ? [...element.vs_step_parent_origin] as Vector3Tuple
+            ? [...storedFrom] as Vector3Tuple
             : liveSocketFrom;
         const authoredSocketRotation = hasStoredFrame
-            ? [...element.vs_step_parent_rotation] as Vector3Tuple
+            ? [...storedRotation] as Vector3Tuple
             : liveSocketRotation;
         const localRotation = relativeEulerXYZ(worldRotation, authoredSocketRotation);
         const socketDelta: Vector3Tuple = [
@@ -374,7 +364,7 @@ function placeStepParentWrappers(newElements: any[], newElementsSet: Set<any>, l
 /**
  * Merges any duplicate groups in the model.
  */
-function mergeDuplicateGroups(newElementsSet: Set<any>, logPrefix: string) {
+function mergeDuplicateGroups(newElementsSet: Set<any>) {
     const toDelete: Group[] = [];
     collectGroupsDepthFirst(Outliner.root).forEach(group => {
         if (isWithinStepParentAttachment(group, newElementsSet)) return;
@@ -440,7 +430,7 @@ export async function processImportedAttachments(elementsBefore: Set<any>, fileP
     placeStepParentWrappers(newElements, newElementsSet, logPrefix);
 
     // 7. Cleanup Duplicates
-    mergeDuplicateGroups(newElementsSet, logPrefix);
+    mergeDuplicateGroups(newElementsSet);
 
     Undo.finishEdit(`Import attachment: ${filePath.split(/[/\\]/).pop()}`);
     Canvas.updateAll();

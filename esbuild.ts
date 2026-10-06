@@ -1,4 +1,5 @@
 import * as esbuild from "esbuild"
+import { copyFileSync } from "fs"
 
 if (process.argv.includes("--mode=dev")) {
 	process.env.NODE_ENV = "development"
@@ -15,6 +16,7 @@ const CONFIG: esbuild.BuildOptions = {
 
     ],
     format: "iife",
+    loader: { ".png": "dataurl" },
 };
 
 const PROD_CONFIG: esbuild.BuildOptions = {
@@ -40,4 +42,4 @@ async function build() {
     }
 }
 
-build()
+build().then(() => copyFileSync("./icon.png", "./dist/icon.png"))

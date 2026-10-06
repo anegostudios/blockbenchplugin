@@ -1,11 +1,12 @@
 import { codecVS } from "./codec";
 import { vsAnimationCodec } from "./animation_codec";
+import icon from "../icon.png";
 
 export function create_format(): ModelFormat { 
     const format =  new ModelFormat("formatVS", {
         name: "Vintage Story Base Format",
         codec: codecVS,
-        icon: "icon.png",
+        icon: icon,
         box_uv: false,
         optional_box_uv: false,
         single_texture: false,
@@ -49,7 +50,6 @@ export function create_format(): ModelFormat {
         java_cube_shading_properties: false,
         cullfaces: false, // Not sure if Vintage Story supports this
         render_sides: "double",
-        //@ts-expect-error: Missing in type --- IGNORE ---
         euler_order: "XYZ",
         animation_loop_wrapping: true,
         quaternion_interpolation: false,

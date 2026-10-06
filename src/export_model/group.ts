@@ -2,6 +2,7 @@ import { VS_Element } from "../vs_shape_def";
 import { traverse } from "./traverse";
 import * as util from "../util";
 import { VS_CUBE_PROPS, VS_GROUP_PROPS } from "../property";
+import { apply_extra_props } from "../preserved_props";
 import { process_locators } from "./locator";
 import { process_faces } from "./cube/faces";
 
@@ -21,7 +22,7 @@ function get_parent_pos(parent: Group | null, parent_from_override?: [number, nu
     }
     if (!parent) return [0, 0, 0];
     // Use stored VS from if available (set during import), otherwise fall back to origin
-    return (parent as any).vs_group_from ?? parent.origin;
+    return parent.vs_group_from ?? parent.origin;
 }
 
 /**
@@ -29,7 +30,7 @@ function get_parent_pos(parent: Group | null, parent_from_override?: [number, nu
  * Uses vs_group_from if set during import, otherwise falls back to origin.
  */
 function get_group_vs_from(node: Group): [number, number, number] {
-    return (node as any).vs_group_from ?? [...node.origin] as [number, number, number];
+    return node.vs_group_from ?? [...node.origin];
 }
 
 /**
@@ -37,7 +38,13 @@ function get_group_vs_from(node: Group): [number, number, number] {
  * Uses vs_group_to if set during import, otherwise falls back to origin.
  */
 function get_group_vs_to(node: Group): [number, number, number] {
-    return (node as any).vs_group_to ?? [...node.origin] as [number, number, number];
+    return node.vs_group_to ?? [...node.origin];
+}
+
+function keeps_rotation_origin(node: Group, element_from: [number, number, number]): boolean {
+    if (node.vs_has_rotation_origin !== false) return true;
+    if (node.rotation.some(angle => angle !== 0)) return true;
+    return !util.vector_equals(node.origin as [number, number, number], element_from);
 }
 
 /**
@@ -74,18 +81,17 @@ export function process_group(
         rotationOrigin = util.vector_add(rotationOrigin, offset);
     }
 
-    const hasRotation = converted_rotation[0] !== 0 || converted_rotation[1] !== 0 || converted_rotation[2] !== 0;
 
     const vsElement: VS_Element = {
         name: node.name,
         from: from,
         to: to,
-        rotationOrigin: rotationOrigin,
-        ...((node as any).vs_uv ? { uv: (node as any).vs_uv } : undefined),
+        ...(keeps_rotation_origin(node, node_vs_from) && { rotationOrigin }),
+        ...(node.vs_uv ? { uv: node.vs_uv } : undefined),
         ...(converted_rotation[0] !== 0 && { rotationX: converted_rotation[0] }),
         ...(converted_rotation[1] !== 0 && { rotationY: converted_rotation[1] }),
         ...(converted_rotation[2] !== 0 && { rotationZ: converted_rotation[2] }),
-        ...((node as any).vs_zero_size_faces ? { faces: (node as any).vs_zero_size_faces } : undefined),
+        ...(node.vs_zero_size_faces ? { faces: node.vs_zero_size_faces } : undefined),
         children: []
     };
 
@@ -122,6 +128,8 @@ export function process_group(
             vsElement[prop_name] = numValue;
         }
     }
+
+    apply_extra_props(vsElement, node.vs_extra_props);
 
     // Process child locators as attachment points
     const locators = node.children.filter(child => child instanceof Locator && !(typeof NullObject !== 'undefined' && child instanceof NullObject)) as Array<Locator>;
@@ -186,14 +194,13 @@ export function process_collapsed_group(
     // Process faces from the _geo cube
     const reduced_faces = process_faces(geoChild.faces);
 
-    const hasRotation = converted_rotation[0] !== 0 || converted_rotation[1] !== 0 || converted_rotation[2] !== 0;
 
     const vsElement: VS_Element = {
         name: node.name,
         from: from,
         to: to,
-        rotationOrigin: rotationOrigin,
-        ...((geoChild as any).vs_uv ? { uv: (geoChild as any).vs_uv } : ((geoChild.uv_offset[0] !== 0 || geoChild.uv_offset[1] !== 0) && { uv: geoChild.uv_offset })),
+        ...(keeps_rotation_origin(node, geoChild.from as [number, number, number]) && { rotationOrigin }),
+        ...(geoChild.vs_uv ? { uv: geoChild.vs_uv } : ((geoChild.uv_offset[0] !== 0 || geoChild.uv_offset[1] !== 0) && { uv: geoChild.uv_offset })),
         ...(converted_rotation[0] !== 0 && { rotationX: converted_rotation[0] }),
         ...(converted_rotation[1] !== 0 && { rotationY: converted_rotation[1] }),
         ...(converted_rotation[2] !== 0 && { rotationZ: converted_rotation[2] }),
@@ -247,6 +254,9 @@ export function process_collapsed_group(
             vsElement[prop_name] = numValue;
         }
     }
+
+    apply_extra_props(vsElement, geoChild.vs_extra_props);
+    apply_extra_props(vsElement, node.vs_extra_props);
 
     // Process child locators as attachment points
     const locators = node.children.filter(child => child instanceof Locator && !(typeof NullObject !== 'undefined' && child instanceof NullObject)) as Array<Locator>;

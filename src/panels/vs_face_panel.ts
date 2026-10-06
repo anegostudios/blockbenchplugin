@@ -78,18 +78,14 @@ function computeWindData(cube: Cube, direction: string): [number, number, number
 
     for (let i = 0; i < 4; i++) {
         const pos = vertices[i];
-        // @ts-expect-error: THREE is global in Blockbench
         const localPos = new THREE.Vector3(
             pos[0] - cube.origin[0],
             pos[1] - cube.origin[1],
             pos[2] - cube.origin[2]
         );
 
-        // @ts-expect-error: mesh access
         if (cube.mesh) {
-            // @ts-expect-error: mesh access
             cube.mesh.updateMatrixWorld();
-            // @ts-expect-error: mesh access
             const worldPos = cube.mesh.localToWorld(localPos);
             result[i] = Math.trunc(worldPos.y / 16);
         } else {
@@ -100,48 +96,42 @@ function computeWindData(cube: Cube, direction: string): [number, number, number
 }
 
 // Vertex highlight dot — shared THREE.js objects
-let vertexDot: any = null;
+let vertexDot: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial> | null = null;
 
 function createVertexDot() {
-    if (vertexDot) return;
-    // @ts-expect-error: THREE is global in Blockbench
+    if (vertexDot) return vertexDot;
     const geo = new THREE.SphereGeometry(0.5, 8, 8);
-    // @ts-expect-error: THREE is global in Blockbench
     const mat = new THREE.MeshBasicMaterial({ color: 0xff4444, depthTest: false, transparent: true, opacity: 0.9 });
-    // @ts-expect-error: THREE is global in Blockbench
     vertexDot = new THREE.Mesh(geo, mat);
     vertexDot.renderOrder = 999;
     vertexDot.visible = false;
+    return vertexDot;
 }
 
 function showVertexDot(cube: Cube, direction: string, vertexIndex: number) {
-    createVertexDot();
+    const dot = createVertexDot();
     const vertices = getFaceVertices(cube, direction);
     const pos = vertices[vertexIndex];
     if (!pos) return;
 
-    // @ts-expect-error: THREE is global in Blockbench
     const localPos = new THREE.Vector3(
         pos[0] - cube.origin[0],
         pos[1] - cube.origin[1],
         pos[2] - cube.origin[2]
     );
 
-    // @ts-expect-error: mesh access
     if (cube.mesh) {
-        // @ts-expect-error: mesh access
         cube.mesh.updateMatrixWorld();
-        // @ts-expect-error: mesh access
         const worldPos = cube.mesh.localToWorld(localPos);
-        vertexDot.position.copy(worldPos);
+        dot.position.copy(worldPos);
     } else {
-        vertexDot.position.set(pos[0], pos[1], pos[2]);
+        dot.position.set(pos[0], pos[1], pos[2]);
     }
 
-    vertexDot.visible = true;
+    dot.visible = true;
 
-    if (!vertexDot.parent) {
-        Canvas.scene.add(vertexDot);
+    if (!dot.parent) {
+        Canvas.scene.add(dot);
     }
 }
 
@@ -158,6 +148,24 @@ function removeVertexDot() {
         vertexDot.material.dispose();
         vertexDot = null;
     }
+}
+
+function createFacePanelData() {
+    return {
+        selectedCube: null as Cube | null,
+        selectedFaceName: 'north' as CubeFaceDirection,
+        applyToAll: false,
+        glow: 0,
+        reflectiveMode: '0',
+        windMode: [-1, -1, -1, -1] as number[],
+        windData: [0, 0, 0, 0] as number[],
+        windModeOptions: WIND_MODE_OPTIONS,
+        reflectiveModeOptions: REFLECTIVE_MODE_OPTIONS,
+        faceDirections: FACE_DIRECTIONS,
+        faceLabels: FACE_LABELS,
+        faceColors: FACE_COLORS,
+        _listeners: [] as Array<() => void>,
+    };
 }
 
 const vueComponent = {
@@ -206,58 +214,39 @@ const vueComponent = {
             </div>
         </div>
     `,
-    data() {
-        return {
-            selectedCube: null as Cube | null,
-            selectedFaceName: 'north' as string,
-            applyToAll: false,
-            glow: 0,
-            reflectiveMode: '0',
-            windMode: [-1, -1, -1, -1] as number[],
-            windData: [0, 0, 0, 0] as number[],
-            windModeOptions: WIND_MODE_OPTIONS,
-            reflectiveModeOptions: REFLECTIVE_MODE_OPTIONS,
-            faceDirections: FACE_DIRECTIONS,
-            faceLabels: FACE_LABELS,
-            faceColors: FACE_COLORS,
-            _listeners: [] as Array<() => void>,
-        };
-    },
+    data: createFacePanelData,
     computed: {
-        windDataDisplay(): string {
-            return (this as any).windData.join(', ');
+        windDataDisplay(this: FacePanelContext): string {
+            return this.windData.join(', ');
         }
     },
     methods: {
-        getSelectedFace(): any | null {
-            const self = this as any;
-            if (!self.selectedCube || !self.selectedFaceName) return null;
-            return self.selectedCube.faces[self.selectedFaceName];
+        getSelectedFace(this: FacePanelContext): CubeFace | null {
+            if (!this.selectedCube || !this.selectedFaceName) return null;
+            return this.selectedCube.faces[this.selectedFaceName];
         },
 
-        getTargetFaces(): Array<{ face: any, direction: string }> {
-            const self = this as any;
-            if (!self.selectedCube) return [];
-            if (self.applyToAll) {
+        getTargetFaces(this: FacePanelContext): Array<{ face: CubeFace, direction: CubeFaceDirection }> {
+            const cube = this.selectedCube;
+            if (!cube) return [];
+            if (this.applyToAll) {
                 return FACE_DIRECTIONS
-                    .filter(d => self.selectedCube.faces[d])
-                    .map(d => ({ face: self.selectedCube.faces[d], direction: d }));
+                    .filter(d => cube.faces[d])
+                    .map(d => ({ face: cube.faces[d], direction: d }));
             }
-            const face = self.getSelectedFace();
+            const face = this.getSelectedFace();
             if (!face) return [];
-            return [{ face, direction: self.selectedFaceName }];
+            return [{ face, direction: this.selectedFaceName }];
         },
 
-        selectFace(direction: string) {
-            const self = this as any;
-            self.selectedFaceName = direction;
-            self.loadFromFace();
+        selectFace(this: FacePanelContext, direction: CubeFaceDirection) {
+            this.selectedFaceName = direction;
+            this.loadFromFace();
         },
 
-        highlightVertex(index: number) {
-            const self = this as any;
-            if (self.selectedCube && self.selectedFaceName) {
-                showVertexDot(self.selectedCube, self.selectedFaceName, index);
+        highlightVertex(this: FacePanelContext, index: number) {
+            if (this.selectedCube && this.selectedFaceName) {
+                showVertexDot(this.selectedCube, this.selectedFaceName, index);
             }
         },
 
@@ -265,42 +254,41 @@ const vueComponent = {
             hideVertexDot();
         },
 
-        setGlow(value: string) {
+        setGlow(this: FacePanelContext, value: string) {
             const num = Math.max(0, Math.min(255, parseInt(value) || 0));
-            (this as any).glow = num;
-            for (const { face } of (this as any).getTargetFaces()) {
+            this.glow = num;
+            for (const { face } of this.getTargetFaces()) {
                 face.glow = num;
             }
         },
 
-        setReflectiveMode(value: string) {
+        setReflectiveMode(this: FacePanelContext, value: string) {
             const num = parseInt(value) || 0;
-            (this as any).reflectiveMode = String(num);
-            for (const { face } of (this as any).getTargetFaces()) {
+            this.reflectiveMode = String(num);
+            for (const { face } of this.getTargetFaces()) {
                 face.reflectiveMode = num;
             }
         },
 
-        getWindModeComponent(index: number): string {
-            return String((this as any).windMode[index] ?? -1);
+        getWindModeComponent(this: FacePanelContext, index: number): string {
+            return String(this.windMode[index] ?? -1);
         },
 
-        setWindModeComponent(index: number, value: string) {
-            const self = this as any;
+        setWindModeComponent(this: FacePanelContext, index: number, value: string) {
             const num = parseInt(value);
-            self.windMode[index] = num;
+            this.windMode[index] = num;
             // Force reactivity
-            self.windMode = [...self.windMode];
+            this.windMode = [...this.windMode];
 
-            for (const { face, direction } of self.getTargetFaces()) {
+            for (const { face, direction } of this.getTargetFaces()) {
                 if (!face.windMode) {
                     face.windMode = [-1, -1, -1, -1];
                 }
                 face.windMode[index] = num;
 
                 // Auto-compute wind data when wind mode changes (matching VSMC behavior)
-                if (self.selectedCube) {
-                    const autoData = computeWindData(self.selectedCube, direction);
+                if (this.selectedCube) {
+                    const autoData = computeWindData(this.selectedCube, direction);
                     if (autoData[0] !== 0 || autoData[1] !== 0 || autoData[2] !== 0 || autoData[3] !== 0) {
                         face.windData = autoData;
                     } else {
@@ -316,70 +304,73 @@ const vueComponent = {
             }
 
             // Update wind data display
-            self.updateWindDataDisplay();
+            this.updateWindDataDisplay();
         },
 
-        updateWindDataDisplay() {
-            const self = this as any;
-            const face = self.getSelectedFace();
+        updateWindDataDisplay(this: FacePanelContext) {
+            const face = this.getSelectedFace();
             if (face && face.windData) {
-                self.windData = [...face.windData];
-            } else if (self.selectedCube && self.selectedFaceName) {
-                self.windData = computeWindData(self.selectedCube, self.selectedFaceName);
+                this.windData = [...face.windData];
+            } else if (this.selectedCube && this.selectedFaceName) {
+                this.windData = computeWindData(this.selectedCube, this.selectedFaceName);
             } else {
-                self.windData = [0, 0, 0, 0];
+                this.windData = [0, 0, 0, 0];
             }
         },
 
-        loadFromFace() {
-            const self = this as any;
-            const face = self.getSelectedFace();
+        loadFromFace(this: FacePanelContext) {
+            const face = this.getSelectedFace();
             if (!face) {
-                self.glow = 0;
-                self.reflectiveMode = '0';
-                self.windMode = [-1, -1, -1, -1];
-                self.windData = [0, 0, 0, 0];
+                this.glow = 0;
+                this.reflectiveMode = '0';
+                this.windMode = [-1, -1, -1, -1];
+                this.windData = [0, 0, 0, 0];
                 return;
             }
-            self.glow = face.glow || 0;
-            self.reflectiveMode = String(face.reflectiveMode || 0);
-            self.windMode = face.windMode ? [...face.windMode] : [-1, -1, -1, -1];
-            self.updateWindDataDisplay();
+            this.glow = face.glow || 0;
+            this.reflectiveMode = String(face.reflectiveMode || 0);
+            this.windMode = face.windMode ? [...face.windMode] : [-1, -1, -1, -1];
+            this.updateWindDataDisplay();
         },
 
-        updateSelection() {
-            const self = this as any;
+        updateSelection(this: FacePanelContext) {
             hideVertexDot();
 
             const selected = Cube.selected;
             if (!selected || selected.length === 0) {
-                self.selectedCube = null;
-                self.selectedFaceName = 'north';
+                this.selectedCube = null;
+                this.selectedFaceName = 'north';
                 return;
             }
-            self.selectedCube = selected[0];
-            self.loadFromFace();
+            this.selectedCube = selected[0];
+            this.loadFromFace();
         },
     },
-    mounted() {
-        const self = this as any;
-        self.updateSelection();
+    mounted(this: FacePanelContext) {
+        this.updateSelection();
 
-        const onSelectionUpdate = () => self.updateSelection();
+        const onSelectionUpdate = () => this.updateSelection();
         Blockbench.on('update_selection' as EventName, onSelectionUpdate);
 
-        self._listeners = [
+        this._listeners = [
             () => Blockbench.removeListener('update_selection' as EventName, onSelectionUpdate),
         ];
     },
-    beforeDestroy() {
-        const self = this as any;
+    beforeDestroy(this: FacePanelContext) {
         hideVertexDot();
-        for (const unsub of self._listeners) {
+        for (const unsub of this._listeners) {
             unsub();
         }
     }
 };
+
+interface FacePanelContext extends ReturnType<typeof createFacePanelData> {
+    getSelectedFace(): CubeFace | null;
+    getTargetFaces(): Array<{ face: CubeFace, direction: CubeFaceDirection }>;
+    loadFromFace(): void;
+    updateWindDataDisplay(): void;
+    updateSelection(): void;
+}
 
 let panel: Panel | null = null;
 
@@ -388,14 +379,18 @@ createBlockbenchMod(
     {},
     () => {
         panel = new Panel('vs_face_properties', {
+            id: 'vs_face_properties',
             name: 'VS Face Properties',
             icon: 'grain',
+            expand_button: false,
+            default_side: 'right',
             condition: () => Format?.id === 'formatVS',
             default_position: {
                 slot: 'right_bar',
                 float_position: [0, 0],
                 float_size: [300, 300],
-                height: 300
+                height: 300,
+                folded: false
             },
             component: vueComponent
         });

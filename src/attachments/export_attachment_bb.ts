@@ -13,8 +13,8 @@ export function exportAttachmentsBB(selection: Group[]) {
         return;
     }
 
-    const bb_codec = createExportCodec();
-    bb_codec.export(selection);
+    const bb_codec = createExportCodec(selection);
+    bb_codec.export();
     
     if (DEBUG) console.log("Exporting selected attachments to .bbmodel format...");
 }

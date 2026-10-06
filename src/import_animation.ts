@@ -1,5 +1,8 @@
 import * as util from "./util";
-import { VS_Animation, VS_AnimationKey, VS_KeyFrameInterpolation } from "./vs_shape_def";
+import { VS_Animation, VS_AnimationKey, VS_AnimationNumericField, VS_AnimationInterpolationField, VS_KeyFrameInterpolation } from "./vs_shape_def";
+import { particle_data_point } from "./animation_particles";
+import { sound_data_point } from "./animation_sounds";
+import { collect_extras } from "./preserved_props";
 
 /**
  * Creates one Blockbench animation from a VS animation definition and returns it.
@@ -13,13 +16,13 @@ export function create_animation(vsAnimation: VS_Animation, path?: string, saved
     const animationLength = vsAnimation.quantityframes / FPS;
     const isLooping = vsAnimation.onAnimationEnd === 'Repeat';
 
-    const animation = ((new Animation({
-        //@ts-expect-error: Blockbench overwrites libdom's Animation type with its own Animation Class, but TypeScript doesn't include a way to overwrite UMD global types.
+    const animation = new Blockbench.Animation({
         name: vsAnimation.name,
+        path: path || '',
         loop: isLooping ? 'loop' : (vsAnimation.onAnimationEnd === 'Hold' ? 'hold' : 'once'),
         length: animationLength,
         snapping: FPS
-    }) as unknown) as _Animation).add();
+    }).add();
 
     // Associate with a library file when loaded from one (drives panel grouping + saving).
     if (path) animation.path = path;
@@ -29,12 +32,11 @@ export function create_animation(vsAnimation: VS_Animation, path?: string, saved
     }
 
     // Preserve VS-specific animation properties for round-trip fidelity
-    // @ts-expect-error: custom property for round-trip
     animation.vs_code = vsAnimation.code;
-    // @ts-expect-error: custom property for round-trip
     animation.vs_onActivityStopped = vsAnimation.onActivityStopped;
-    // @ts-expect-error: custom property for round-trip
     animation.vs_onAnimationEnd = vsAnimation.onAnimationEnd;
+
+    store_animation_extras(animation, vsAnimation);
 
     // Per-bone, per-channel sorted frame lists so bezier handle widths can be placed against the
     // correct segment (mirrors the engine's per-channel keyframe walk).
@@ -47,13 +49,40 @@ export function create_animation(vsAnimation: VS_Animation, path?: string, saved
             effects.addKeyframe({
                 channel: 'particle',
                 time: vsKeyframe.frame / FPS,
-                data_points: vsKeyframe.particles.map(p => ({ effect: p.effect, locator: p.atAttachmentPoint || '' })),
+                data_points: vsKeyframe.particles.map(p => particle_data_point(p.effect, p.atAttachmentPoint)),
+            });
+        }
+
+        if (vsKeyframe.sounds && vsKeyframe.sounds.length > 0) {
+            getEffectAnimator(animation).addKeyframe({
+                channel: 'sound',
+                time: vsKeyframe.frame / FPS,
+                data_points: vsKeyframe.sounds.map(s => sound_data_point(s)),
+            });
+        }
+
+        if (vsKeyframe.textures) {
+            getEffectAnimator(animation).addKeyframe({
+                channel: 'timeline',
+                time: vsKeyframe.frame / FPS,
+                data_points: [{ script: `"textures": ${JSON.stringify(vsKeyframe.textures)}` }],
             });
         }
 
         for (const boneName in vsKeyframe.elements) {
             const transform = vsKeyframe.elements[boneName];
-            const bone = Group.all.find(g => g.name === boneName);
+            let bone = Group.all.find(g => g.name === boneName);
+            if (!bone) {
+                const cube = Cube.all.find(c => c.name === boneName);
+                if (cube) {
+                    bone = new Group(cube.getSaveCopy()).sortInBefore(cube).init();
+                    cube.name = `${boneName}_geo`;
+                    cube.rotation = [0, 0, 0];
+                    cube.stepParentName = '';
+                    cube.addTo(bone);
+                    Canvas.updateAllPositions();
+                }
+            }
             if (!bone) continue;
 
             const animator = animation.getBoneAnimator(bone);
@@ -78,24 +107,22 @@ export function import_animations(animations: Array<VS_Animation>) {
     animations.forEach(vsAnimation => create_animation(vsAnimation));
 };
 
-// Blockbench lazily creates the effect animator on first access, but only on builds where
-// `animators` is the proxy. Fall back to constructing it so particle import cannot throw.
 function getEffectAnimator(animation: _Animation): any {
     const animators = animation.animators as any;
     if (animators.effects) return animators.effects;
-    animators.effects = new EffectAnimator(null, animation, 'Effects');
+    animators.effects = new (EffectAnimator as any)(animation);
     return animators.effects;
 }
 
 type BBImportChannel = 'rotation' | 'position' | 'scale';
 
 interface ImportChannelConfig {
-    interp: keyof VS_AnimationKey;
-    value: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey];
-    tangentIn: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey];
-    tangentOut: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey];
-    widthIn: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey];
-    widthOut: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey];
+    interp: VS_AnimationInterpolationField;
+    value: [VS_AnimationNumericField, VS_AnimationNumericField, VS_AnimationNumericField];
+    tangentIn: [VS_AnimationNumericField, VS_AnimationNumericField, VS_AnimationNumericField];
+    tangentOut: [VS_AnimationNumericField, VS_AnimationNumericField, VS_AnimationNumericField];
+    widthIn: [VS_AnimationNumericField, VS_AnimationNumericField, VS_AnimationNumericField];
+    widthOut: [VS_AnimationNumericField, VS_AnimationNumericField, VS_AnimationNumericField];
     default: number;
 }
 
@@ -129,6 +156,40 @@ const IMPORT_CHANNELS: Record<BBImportChannel, ImportChannelConfig> = {
     },
 };
 
+const ANIMATION_KNOWN_KEYS = new Set([
+    'name', 'code', 'quantityframes', 'onActivityStopped', 'onAnimationEnd', 'keyframes',
+]);
+const KEYFRAME_KNOWN_KEYS = new Set(['frame', 'elements', 'textures', 'particles', 'sounds']);
+const ANIMATION_KEY_KNOWN_KEYS = new Set<string>(
+    (Object.keys(IMPORT_CHANNELS) as BBImportChannel[]).flatMap(channel => {
+        const cfg = IMPORT_CHANNELS[channel];
+        return [cfg.interp, ...cfg.value, ...cfg.tangentIn, ...cfg.tangentOut, ...cfg.widthIn, ...cfg.widthOut];
+    }) as string[]
+);
+
+function store_animation_extras(animation: _Animation, vsAnimation: VS_Animation) {
+    const animationExtras = collect_extras(vsAnimation, ANIMATION_KNOWN_KEYS);
+    if (animationExtras) animation.vs_extra_props = animationExtras;
+
+    const keyframeExtras: Record<string, Record<string, unknown>> = {};
+    const elementExtras: Record<string, Record<string, Record<string, unknown>>> = {};
+
+    vsAnimation.keyframes.forEach(vsKeyframe => {
+        const frame = String(vsKeyframe.frame);
+        const extras = collect_extras(vsKeyframe, KEYFRAME_KNOWN_KEYS);
+        if (extras) keyframeExtras[frame] = extras;
+
+        for (const boneName in vsKeyframe.elements) {
+            const elemExtras = collect_extras(vsKeyframe.elements[boneName], ANIMATION_KEY_KNOWN_KEYS);
+            if (!elemExtras) continue;
+            (elementExtras[boneName] = elementExtras[boneName] || {})[frame] = elemExtras;
+        }
+    });
+
+    if (Object.keys(keyframeExtras).length) animation.vs_extra_keyframe_props = keyframeExtras;
+    if (Object.keys(elementExtras).length) animation.vs_extra_element_props = elementExtras;
+}
+
 type ChannelFrameMap = Record<string, Record<BBImportChannel, number[]>>;
 
 // Collects, per bone and per channel, the sorted frames that actually set that channel, matching
@@ -141,7 +202,7 @@ function buildChannelFrames(vsAnimation: VS_Animation): ChannelFrameMap {
             const transform = kf.elements[boneName];
             const entry = map[boneName] || (map[boneName] = { rotation: [], position: [], scale: [] });
             (Object.keys(IMPORT_CHANNELS) as BBImportChannel[]).forEach(channel => {
-                if (IMPORT_CHANNELS[channel].value.some(k => (transform as any)[k] != null)) {
+                if (IMPORT_CHANNELS[channel].value.some(k => transform[k] != null)) {
                     entry[channel].push(kf.frame);
                 }
             });
@@ -164,15 +225,15 @@ function buildChannelKeyframeOptions(
     fps: number,
 ): KeyframeOptions | null {
     const cfg = IMPORT_CHANNELS[channel];
-    if (!cfg.value.some(k => (transform as any)[k] != null)) return null;
+    if (!cfg.value.some(k => transform[k] != null)) return null;
 
     const value = {
-        x: (transform as any)[cfg.value[0]] ?? cfg.default,
-        y: (transform as any)[cfg.value[1]] ?? cfg.default,
-        z: (transform as any)[cfg.value[2]] ?? cfg.default,
+        x: transform[cfg.value[0]] ?? cfg.default,
+        y: transform[cfg.value[1]] ?? cfg.default,
+        z: transform[cfg.value[2]] ?? cfg.default,
     };
 
-    const bbInterp = mapInterpolation((transform as any)[cfg.interp]);
+    const bbInterp = mapInterpolation(transform[cfg.interp]);
     const opts: KeyframeOptions = {
         interpolation: bbInterp,
         time: frame / fps,
@@ -210,8 +271,8 @@ function segmentDurations(frames: number[], frame: number): { outDur: number, in
 // null when there's no adjacent segment (a boundary handle), leaving Blockbench's own default there.
 function reconstructHandle(
     transform: VS_AnimationKey,
-    tangentFields: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey],
-    widthFields: [keyof VS_AnimationKey, keyof VS_AnimationKey, keyof VS_AnimationKey],
+    tangentFields: [VS_AnimationNumericField, VS_AnimationNumericField, VS_AnimationNumericField],
+    widthFields: [VS_AnimationNumericField, VS_AnimationNumericField, VS_AnimationNumericField],
     segmentFrames: number,
     sign: 1 | -1,
     fps: number,
@@ -221,9 +282,9 @@ function reconstructHandle(
     const value: [number, number, number] = [0, 0, 0];
     const time: [number, number, number] = [0, 0, 0];
     for (let i = 0; i < 3; i++) {
-        const wRaw = (transform as any)[widthFields[i]];
+        const wRaw = transform[widthFields[i]];
         const widthFrames = wRaw != null ? Number(wRaw) : defaultWidth;
-        const tRaw = (transform as any)[tangentFields[i]];
+        const tRaw = transform[tangentFields[i]];
         const tangent = tRaw != null ? Number(tRaw) : 0;
         time[i] = widthFrames / fps;
         value[i] = widthFrames !== 0 ? tangent * widthFrames / segmentFrames : 0;
@@ -242,7 +303,7 @@ function mapInterpolation(interp: VS_KeyFrameInterpolation | undefined): 'linear
  * Animations created in this call go onto the undo stack so the user can revert.
  */
 export function clear_animations(): number {
-    const all = (Animation as unknown as typeof _Animation).all.slice();
+    const all = Blockbench.Animation.all.slice();
     all.forEach(a => a.remove(true));
     return all.length;
 }

@@ -1,5 +1,6 @@
 import { VS_AttachmentPoint } from "../vs_shape_def";
 import * as util from "../util";
+import { apply_extra_props } from "../preserved_props";
 
 /**
  * Processes Blockbench Locators and converts them to VS attachment points.
@@ -19,23 +20,23 @@ export function process_locators(
 
     // Use vs_group_from for consistency with group/cube export parent reference
     const parent_pos: [number, number, number] = parent
-        ? ((parent as any).vs_group_from ?? parent.origin)
+        ? (parent.vs_group_from ?? parent.origin)
         : [0, 0, 0];
 
     for (const locator of locators) {
         if (!locator.export) continue;
 
         // Locator position is stored in .from (not .position)
-        const locator_pos: [number, number, number] = (locator.from ?? (locator as any).position ?? [0, 0, 0]) as [number, number, number];
+        const locator_pos: [number, number, number] = locator.from ?? locator.position ?? [0, 0, 0];
 
         // Calculate position relative to parent
         const relative_pos = util.vector_sub(locator_pos, parent_pos);
 
         // Read rotation from registered properties (persisted in .bbmodel)
         const rotation: [number, number, number] = [
-            (locator as any).rotationX || 0,
-            (locator as any).rotationY || 0,
-            (locator as any).rotationZ || 0,
+            locator.rotationX || 0,
+            locator.rotationY || 0,
+            locator.rotationZ || 0,
         ];
 
         const attachmentPoint: VS_AttachmentPoint = {
@@ -47,6 +48,8 @@ export function process_locators(
             rotationY: rotation[1].toString(),
             rotationZ: rotation[2].toString()
         };
+
+        apply_extra_props(attachmentPoint, (locator as any).vs_extra_props);
 
         attachmentPoints.push(attachmentPoint);
     }

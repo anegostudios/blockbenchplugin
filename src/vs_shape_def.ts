@@ -105,6 +105,16 @@ export interface VS_Keyframe {
     elements: Record<string, VS_AnimationKey>,
     textures?: Record<string, string>,
     particles?: Array<VS_AnimationParticle>,
+    sounds?: Array<VS_AnimationSound>,
+}
+
+export interface VS_AnimationSound {
+    location: string,
+    range?: number,
+    volume?: number,
+    pitch?: number,
+    chance?: number,
+    looping?: boolean,
 }
 
 /**
@@ -197,6 +207,12 @@ export interface VS_AnimationKey {
     stretchTangentOutWidthY?: number,
     stretchTangentOutWidthZ?: number,
 }
+
+export type VS_AnimationNumericField = {
+    [K in keyof VS_AnimationKey]-?: VS_AnimationKey[K] extends number | undefined ? K : never;
+}[keyof VS_AnimationKey];
+
+export type VS_AnimationInterpolationField = 'positionInterp' | 'rotationInterp' | 'scaleInterp';
 
 /**
  * In VS shape files, attachment point numeric values are stored as strings.

@@ -33,7 +33,7 @@ jobs:
     - name: Replace Version Number
       uses: jacobtomlinson/gha-find-replace@v3
       with:
-        include: '**/vs_plugin.js'
+        include: '**/vintagestory.js'
         find: >-
           version: '(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)'
         replace: >-
@@ -70,6 +70,6 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/vs_plugin.js
-        asset_name: vs_plugin.js
+        asset_path: ./dist/vintagestory.js
+        asset_name: vintagestory.js
         asset_content_type: application/zip

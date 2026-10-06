@@ -1,7 +1,7 @@
 import { composeEulerXYZ } from './attachment_transform';
 import type { StepParentFrame, Vector3Tuple } from './attachment_transform';
 
-export function createExportCodec() {
+export function createExportCodec(selection: any[] = []) {
     function getElementBindRotation(element: Group | Cube): Vector3Tuple {
         const chain: Vector3Tuple[] = [];
         let current: any = element;
@@ -126,7 +126,8 @@ export function createExportCodec() {
         name: 'Blockbench Project Selection',
         extension: 'bbmodel',
         remember: true,
-        export(selection: any[]) {
+        export() {
+            if (!Project || selection.length === 0) return;
             Blockbench.export({
                 resource_id: 'model',
                 type: this.name,
@@ -137,6 +138,7 @@ export function createExportCodec() {
             });
         },
         compile(selection: any[], options?: any) {
+            if (!Project) throw new Error('Cannot export attachments without an open project.');
             if (!options) options = {};
             const model: any = {
                 meta: {

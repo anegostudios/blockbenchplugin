@@ -1,8 +1,3 @@
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
-const fs = requireNativeModule('fs');
-// @ts-expect-error: requireNativeModule is missing in blockbench types --- IGNORE ---
-const path = requireNativeModule('path');
-
 import { events } from "./util/events";
 import PACKAGE from "../package.json";
 
@@ -20,6 +15,7 @@ import "./mods/formatMod";
 import "./mods/settingsMod";
 import "./mods/legacyFormatConverterMod";
 import "./mods/nodePreviewControllerMod";
+import "./mods/effectAnimatorMod";
 import "./mods/attachmentsMod";
 
 // Panels (loaded after mods to avoid blocking critical format registration)

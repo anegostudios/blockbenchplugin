@@ -1,4 +1,5 @@
 import { VS_CUBE_PROPS } from "../property";
+import { apply_extra_props } from "../preserved_props";
 import { VS_Element } from "../vs_shape_def";
 import {process_faces} from "./cube/faces";
 import {create_VS_element} from "./cube/factory";
@@ -48,5 +49,8 @@ export function process_cube(parent: Group | null, node: Cube, accu: Array<VS_El
             vsElement[prop_name] = numValue;
         }
     }
+
+    apply_extra_props(vsElement, node.vs_extra_props);
+
     accu.push(vsElement);
 }
