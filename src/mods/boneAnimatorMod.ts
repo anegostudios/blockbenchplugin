@@ -27,13 +27,16 @@ createBlockbenchMod(
                 return context.original_interpolate.call(this, channel, allow_expression, axis);
             }
 
-            const preview = Object.create(this) as BoneAnimator;
-            preview.animation = Object.create(animation, { time: { value: time } });
+            const preview = Object.create(this, {
+                animation: { value: Object.create(animation, { time: { value: time } }) }
+            }) as BoneAnimator;
             if (outsideKeys) {
                 const shifted = (offset: number) => keys.map(key =>
                     Object.create(key, { time: { value: key.time + offset } })
                 );
-                preview[channel] = [...shifted(-length), ...keys, ...shifted(length)];
+                Object.defineProperty(preview, channel, {
+                    value: [...shifted(-length), ...keys, ...shifted(length)]
+                });
             }
             return context.original_interpolate.call(preview, channel, allow_expression, axis);
         };
