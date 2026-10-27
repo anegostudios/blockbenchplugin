@@ -51,6 +51,7 @@ export interface VS_Element {
     gradientShade?: boolean,
     renderPass?: number,
     paletteSlot?: number,
+    noOutline?: boolean,
     seasonColorMap?: string,
     shade?: boolean,
     uv?: [number,number],
@@ -90,8 +91,8 @@ export interface VS_Animation {
     name: string,
     code: string,
     quantityframes: number,
-    onActivityStopped: VS_OnActivityStopped,
-    onAnimationEnd: VS_OnAnimationEnd,
+    onActivityStopped?: VS_OnActivityStopped,
+    onAnimationEnd?: VS_OnAnimationEnd,
     easeAnimationSpeed?: boolean,
     keyframes: Array<VS_Keyframe>
 }

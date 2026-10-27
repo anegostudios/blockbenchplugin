@@ -368,7 +368,7 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
         name: animation.name,
         code: storedCode || animation.name.toLowerCase().replace(/ /g, ''),
         quantityframes: get_frame_quantity(animation, keyframes),
-        onActivityStopped: storedOnActivityStopped || "EaseOut",
+        onActivityStopped: storedOnActivityStopped || "Rewind",
         onAnimationEnd,
         keyframes: Object.values(keyframes).sort((a, b) => a.frame - b.frame)
     };

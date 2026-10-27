@@ -14,12 +14,12 @@ import { collect_extras } from "./preserved_props";
 export function create_animation(vsAnimation: VS_Animation, path?: string, saved_name?: string): _Animation {
     const FPS = util.fps;
     const animationLength = vsAnimation.quantityframes / FPS;
-    const isLooping = vsAnimation.onAnimationEnd === 'Repeat';
+    const onAnimationEnd = vsAnimation.onAnimationEnd ?? 'Repeat';
 
     const animation = new Blockbench.Animation({
         name: vsAnimation.name,
         path: path || '',
-        loop: isLooping ? 'loop' : (vsAnimation.onAnimationEnd === 'Hold' ? 'hold' : 'once'),
+        loop: onAnimationEnd === 'Repeat' ? 'loop' : (onAnimationEnd === 'Hold' ? 'hold' : 'once'),
         length: animationLength,
         snapping: FPS
     }).add();
@@ -33,8 +33,8 @@ export function create_animation(vsAnimation: VS_Animation, path?: string, saved
 
     // Preserve VS-specific animation properties for round-trip fidelity
     animation.vs_code = vsAnimation.code;
-    animation.vs_onActivityStopped = vsAnimation.onActivityStopped;
-    animation.vs_onAnimationEnd = vsAnimation.onAnimationEnd;
+    animation.vs_onActivityStopped = vsAnimation.onActivityStopped ?? 'Rewind';
+    animation.vs_onAnimationEnd = onAnimationEnd;
 
     store_animation_extras(animation, vsAnimation);
 

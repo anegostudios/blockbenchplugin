@@ -56,6 +56,7 @@ function editor_known_keys(): Set<string> {
 
 function is_dropped_element_value(name: string, value: unknown, on_group: boolean): boolean {
     if (name === 'shade') return on_group || value !== false;
+    if (name === 'noOutline') return false;
     if (name === 'faces') return on_group && is_empty_record(value);
     if (ELEMENT_UNTRACKED_KEYS.has(name)) return false;
     if (name === 'rotationX' || name === 'rotationY' || name === 'rotationZ') return Number(value) === 0;

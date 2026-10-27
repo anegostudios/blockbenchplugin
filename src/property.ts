@@ -111,6 +111,24 @@ function registerPaletteSlotProperty(targetClass: any) {
     return property;
 }
 
+function registerNoOutlineProperty(targetClass: any) {
+    const property = new Property(targetClass, 'boolean', 'noOutline', {
+        default: false,
+        label: 'No Outline',
+        exposed: true,
+        inputs: {
+            element_panel: {
+                input: {
+                    label: 'No Outline',
+                    type: 'checkbox',
+                },
+            },
+        },
+    });
+
+    return property;
+}
+
 export const VS_GROUP_PROPS = [
     new Property(Group, "string", "stepParentName", {
         default: '',
@@ -130,6 +148,7 @@ export const VS_GROUP_PROPS = [
         },
     }),
     registerPaletteSlotProperty(Group),
+    registerNoOutlineProperty(Group),
 ];
 
 // Blockbench-only properties (not exported to VS JSON format)
@@ -208,6 +227,7 @@ export const VS_CUBE_PROPS = [
         },
     }),
     registerPaletteSlotProperty(Cube),
+    registerNoOutlineProperty(Cube),
     new Property(Cube, "boolean", "shade", {
         default: true,
         label: "Shade",
@@ -443,6 +463,7 @@ declare global {
     interface Group {
         stepParentName?: string;
         paletteSlot?: number;
+        noOutline?: boolean;
         clothingSlot?: string;
         backdrop?: boolean;
         vs_step_parent_local?: boolean;
@@ -460,6 +481,7 @@ declare global {
     interface Cube {
         stepParentName?: string;
         paletteSlot?: number;
+        noOutline?: boolean;
         clothingSlot?: string;
         climateColorMap?: string;
         gradientShade?: boolean;

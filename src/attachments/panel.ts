@@ -662,6 +662,7 @@ export function createAttachmentsPanel(actions: any) {
     const panel = new Panel('attachments_panel', {
         id: 'attachments_panel',
         name: 'Attachments',
+        condition: { formats: ['formatVS'] },
         icon: 'attach_file',
         expand_button: false,
         default_side: 'right',
