@@ -21,7 +21,7 @@ export function process_group(parent: Group | null, object_space_pos: [number,nu
 
     const group = new Group({
         name: vsElement.name,
-        origin: vsElement.rotationOrigin ? util.vector_add(vsElement.rotationOrigin, object_space_pos) : absolute_from,
+        origin: util.vector_add(vsElement.rotationOrigin ?? [0, 0, 0], object_space_pos),
         rotation: [vsElement.rotationX || 0, vsElement.rotationY || 0, vsElement.rotationZ || 0],
     });
 

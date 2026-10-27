@@ -18,7 +18,7 @@ export function create_cube(object_space_pos: [number,number,number], vsElement:
         uv_offset: vsElement.uv,
         shade: vsElement.shade ?? true,
         rotation: [vsElement.rotationX || 0, vsElement.rotationY || 0, vsElement.rotationZ || 0],
-        origin: vsElement.rotationOrigin ? util.vector_add(vsElement.rotationOrigin, object_space_pos) : util.vector_add(vsElement.from, object_space_pos),
+        origin: util.vector_add(vsElement.rotationOrigin ?? [0, 0, 0], object_space_pos),
         faces: faces,
     };
     const cube = new Cube(cube_options);

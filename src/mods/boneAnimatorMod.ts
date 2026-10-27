@@ -48,19 +48,28 @@ createBlockbenchMod(
             //@ts-expect-error: Missing in type --- IGNORE ---
             Animator.MolangParser.context.animation = this.animation;
 
+            const mesh = this.group.mesh;
+            const offset = mesh.position.clone().sub(mesh.fix_position)
+                .applyQuaternion(mesh.quaternion.clone().invert())
+                .divide(mesh.scale);
+
             //@ts-expect-error: Copied from blockbench itself, so it should work :P
             if (!this.muted.rotation) this.displayRotation(this.interpolate('rotation'), multiplier);
-            //@ts-expect-error: Copied from blockbench itself, so it should work :P
-            if (!this.muted.scale) this.displayScale(this.interpolate('scale'), multiplier);
+
+            const scale = !this.muted.scale && this.interpolate('scale');
+            if (scale) {
+                if (this.animation.override) mesh.scale.set(1, 1, 1);
+                mesh.scale.x = (mesh.scale.x + (scale[0] - 1) * multiplier) || 0.00001;
+                mesh.scale.y = (mesh.scale.y + (scale[1] - 1) * multiplier) || 0.00001;
+                mesh.scale.z = (mesh.scale.z + (scale[2] - 1) * multiplier) || 0.00001;
+            }
 
             const position = this.interpolate('position');
             if (!this.muted.position && position) {
-                const mesh = this.group.mesh;
-                const offset = new THREE.Vector3().fromArray(position)
-                    .multiply(mesh.scale)
-                    .applyQuaternion(mesh.quaternion);
-                this.displayPosition(offset.toArray(), multiplier);
+                if (this.animation.override) offset.set(0, 0, 0);
+                offset.addScaledVector(new THREE.Vector3().fromArray(position), multiplier);
             }
+            mesh.position.copy(mesh.fix_position).add(offset.multiply(mesh.scale).applyQuaternion(mesh.quaternion));
         };
         return context;
     },
