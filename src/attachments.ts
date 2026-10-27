@@ -16,6 +16,7 @@ function init() {
     deletables.push(actions.importBB, actions.importVS, panel);
     const attachment_mode = new Mode('attachments', {
         name: 'Attachments',
+        condition: { formats: ['formatVS'] },
         onSelect: () => {
             panel.moveTo('right_bar', Panels.vs_face_properties, true);
             findAttachments();

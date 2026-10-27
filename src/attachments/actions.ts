@@ -41,6 +41,7 @@ function createImportAction(config: ImportActionConfig) {
         icon: config.icon,
         category: 'file',
         description: config.description,
+        condition: { formats: ['formatVS'] },
         click: () => {
             Blockbench.import({
                 resource_id: config.resource_id,
