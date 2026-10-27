@@ -91,8 +91,8 @@ export interface VS_Animation {
     name: string,
     code: string,
     quantityframes: number,
-    onActivityStopped: VS_OnActivityStopped,
-    onAnimationEnd: VS_OnAnimationEnd,
+    onActivityStopped?: VS_OnActivityStopped,
+    onAnimationEnd?: VS_OnAnimationEnd,
     easeAnimationSpeed?: boolean,
     keyframes: Array<VS_Keyframe>
 }
