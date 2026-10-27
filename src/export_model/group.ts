@@ -224,6 +224,9 @@ export function process_collapsed_group(
     if (groupPaletteSlot === 0 && geometryPaletteSlot !== 0) {
         vsElement.paletteSlot = geometryPaletteSlot;
     }
+    if (!node.noOutline && geoChild.noOutline) {
+        vsElement.noOutline = geoChild.noOutline;
+    }
 
     // Copy VS_CUBE_PROPS from the _geo cube (e.g. shade, climateColorMap, unwrapMode)
     for (const prop of VS_CUBE_PROPS) {

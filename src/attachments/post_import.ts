@@ -95,12 +95,27 @@ function mergePaletteSlot(source: any, target: any, logPrefix: string) {
     }
 }
 
+function mergeNoOutline(source: any, target: any) {
+    if (source.noOutline) {
+        target.noOutline = true;
+    }
+}
+
 function preserveInheritedPaletteOnChildren(source: any, children: any[]) {
     const sourceSlot = Number(source?.paletteSlot) || 0;
     if (sourceSlot === 0) return;
     children.forEach(child => {
         if ((child instanceof Group || child instanceof Cube) && (Number(child.paletteSlot) || 0) === 0) {
             child.paletteSlot = sourceSlot;
+        }
+    });
+}
+
+function preserveInheritedNoOutlineOnChildren(source: any, children: any[]) {
+    if (!source.noOutline) return;
+    children.forEach(child => {
+        if ((child instanceof Group || child instanceof Cube) && !child.noOutline) {
+            child.noOutline = true;
         }
     });
 }
@@ -127,6 +142,27 @@ function materializePaletteInheritance(newElements: any[], newElementsSet: Set<a
     roots.forEach(root => walk(root, 0));
 }
 
+function materializeNoOutlineInheritance(newElements: any[], newElementsSet: Set<any>) {
+    const roots = newElements.filter(element =>
+        (element instanceof Group || element instanceof Cube)
+        && (!element.parent || !newElementsSet.has(element.parent))
+    );
+
+    const walk = (element: any, inheritedNoOutline: boolean) => {
+        if (!(element instanceof Group || element instanceof Cube) || !newElementsSet.has(element)) return;
+        const ownNoOutline = element.noOutline === true;
+        const effectiveNoOutline = ownNoOutline || inheritedNoOutline;
+        if (!ownNoOutline && inheritedNoOutline) {
+            element.noOutline = inheritedNoOutline;
+        }
+        if (element instanceof Group) {
+            element.children.forEach(child => walk(child, effectiveNoOutline));
+        }
+    };
+
+    roots.forEach(root => walk(root, false));
+}
+
 /**
  * Matches new groups to existing ones based on clothing slot.
  */
@@ -149,6 +185,7 @@ function smartMatchGroups(newElements: any[], newElementsSet: Set<any>, existing
             if (DEBUG) console.log(`[${logPrefix}] Matched "${newGroup.name}" -> "${match.name}" (slot: ${slot})`);
 
             mergePaletteSlot(newGroup, match, logPrefix);
+            mergeNoOutline(newGroup, match);
             [...newGroup.children].forEach(child => child.addTo(match));
             matchCount++;
 
@@ -184,6 +221,7 @@ function mergeHierarchicalGroups(newElements: any[], newElementsSet: Set<any>, l
             // discovery and palette inheritance on the moved subtree instead
             // of marking/tinting the base socket itself.
             preserveInheritedPaletteOnChildren(newGroup, movedChildren);
+            preserveInheritedNoOutlineOnChildren(newGroup, movedChildren);
             movedChildren.forEach(child => child.addTo(target));
 
             if (newGroup.children.length === 0) {
@@ -233,6 +271,7 @@ function mergeGroupsByCommonSlot(newElements: any[], newElementsSet: Set<any>, l
 
                 if (DEBUG) console.log(`[${logPrefix}] Merging "${g.name}" into "${finalTarget.name}" (slot: ${slot})`);
                 mergePaletteSlot(g, finalTarget, logPrefix);
+                mergeNoOutline(g, finalTarget);
                 [...g.children].forEach(c => c.addTo(finalTarget));
 
                 if (g.children.length === 0) {
@@ -413,6 +452,7 @@ export async function processImportedAttachments(elementsBefore: Set<any>, fileP
     // inheritance first so an ancestor-only paletteSlot follows the imported
     // attachment geometry rather than disappearing with the wrapper.
     materializePaletteInheritance(newElements, newElementsSet);
+    materializeNoOutlineInheritance(newElements, newElementsSet);
 
     // 3. Smart Match: New groups -> Old groups with same slot
     const matchCount = smartMatchGroups(newElements, newElementsSet, elementsBefore, logPrefix);

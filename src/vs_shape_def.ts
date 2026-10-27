@@ -51,6 +51,7 @@ export interface VS_Element {
     gradientShade?: boolean,
     renderPass?: number,
     paletteSlot?: number,
+    noOutline?: boolean,
     seasonColorMap?: string,
     shade?: boolean,
     uv?: [number,number],
