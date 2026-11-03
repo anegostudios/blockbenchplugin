@@ -52,7 +52,7 @@ createBlockbenchMod(
             description: "Choose the clothing/attachment slot system to use. Glint for Glint character customization, Vintage Story for Seraph models, or Custom for your own slots.",
             category: "general",
             type: "select",
-            value: "glint",
+            value: "vintage_story",
             options: {
                 glint: "Glint (Outerwear, Top, Bottoms, Boots, etc.)",
                 vintage_story: "Vintage Story (Arm, Head, UpperBody, etc.)",
