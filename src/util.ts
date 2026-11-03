@@ -4,6 +4,11 @@ declare const THREE: typeof import('three');
 
 export const fps = 30;
 
+// Glint attachment preset active
+export function is_glint_preset(): boolean {
+    return Settings.get('attachment_preset') === 'glint';
+}
+
 export const get_texture_location = function (domain, rel_path) {
 
     for (const base_mod_path of ["creative", "game", "survival"]) {

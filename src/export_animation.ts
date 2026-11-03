@@ -368,7 +368,7 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
         name: animation.name,
         code: storedCode || animation.name.toLowerCase().replace(/ /g, ''),
         quantityframes: get_frame_quantity(animation, keyframes),
-        onActivityStopped: storedOnActivityStopped || "Rewind",
+        onActivityStopped: storedOnActivityStopped || (util.is_glint_preset() ? "EaseOut" : "Rewind"),
         onAnimationEnd,
         keyframes: Object.values(keyframes).sort((a, b) => a.frame - b.frame)
     };
@@ -400,6 +400,10 @@ export function compile_animation(animation: _Animation, catmullConverted?: stri
                 vsAnimation.keyframes.sort((a, b) => a.frame - b.frame);
             }
         }
+    }
+
+    if (vsAnimation.onAnimationEnd !== "Repeat" && util.is_glint_preset()) {
+        hold_end_pose(vsAnimation.keyframes, vsAnimation.quantityframes - 1);
     }
 
     if (vsAnimation.keyframes.length === 0) return null;
@@ -478,6 +482,38 @@ function normalize_terminal_keyframe(
     shiftedKeyframe.frame = lastExportableFrame;
     keyframes[lastExportableFrame] = shiftedKeyframe;
     delete keyframes[terminalFrame];
+}
+
+// Pin first/last channel values
+function hold_end_pose(keyframes: VS_Keyframe[], lastFrame: number) {
+    const start: Record<string, Partial<VS_AnimationKey>> = {};
+    const end: Record<string, Partial<VS_AnimationKey>> = {};
+    for (const [axes] of CHANNEL_AXIS_NEUTRALS) {
+        const seen: Record<string, { first: VS_Keyframe, last: VS_Keyframe, count: number }> = {};
+        for (const keyframe of keyframes) {
+            for (const [name, elem] of Object.entries(keyframe.elements)) {
+                if (elem[axes[0]] === undefined) continue;
+                const entry = seen[name] ??= { first: keyframe, last: keyframe, count: 0 };
+                entry.last = keyframe;
+                entry.count++;
+            }
+        }
+        for (const [name, { first, last, count }] of Object.entries(seen)) {
+            if (count < 2) continue;
+            if (first.frame > 0) Object.assign(start[name] ??= {}, pick(first.elements[name], axes));
+            if (last.frame < lastFrame) Object.assign(end[name] ??= {}, pick(last.elements[name], axes));
+        }
+    }
+    for (const [frame, additions] of [[0, start], [lastFrame, end]] as const) {
+        if (!Object.keys(additions).length) continue;
+        const keyframe = keyframes.find(kf => kf.frame === frame) ?? keyframes[keyframes.push({ frame, elements: {} }) - 1];
+        for (const [name, values] of Object.entries(additions)) Object.assign(keyframe.elements[name] ??= {}, values);
+    }
+    keyframes.sort((a, b) => a.frame - b.frame);
+}
+
+function pick(elem: VS_AnimationKey, keys: readonly (keyof VS_AnimationKey)[]): Partial<VS_AnimationKey> {
+    return Object.fromEntries(keys.map(key => [key, elem[key]]));
 }
 
 function keyframe_contents_match(a: VS_Keyframe, b: VS_Keyframe): boolean {

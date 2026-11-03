@@ -1,6 +1,6 @@
 import { createBlockbenchMod } from "../util/moddingTools";
 import * as PACKAGE from "../../package.json";
-import { fps, is_vs_project } from "../util";
+import { fps, is_glint_preset, is_vs_project } from "../util";
 
 declare const THREE: typeof import('three');
 
@@ -20,9 +20,13 @@ createBlockbenchMod(
             }
 
             const lastFrameTime = Math.max(0, Math.round(length * fps) - 1) / fps;
-            const time = animation.loop === 'loop' ? animation.time : Math.min(animation.time, lastFrameTime);
+            let time = animation.loop === 'loop' ? animation.time : Math.min(animation.time, lastFrameTime);
             const times = keys.map(key => key.time);
-            const outsideKeys = time < Math.min(...times) || time > Math.max(...times);
+            const firstKeyTime = Math.min(...times);
+            const lastKeyTime = Math.max(...times);
+            // Glint: pin start/end pose
+            if (animation.loop !== 'loop' && is_glint_preset()) time = Math.min(Math.max(time, firstKeyTime), lastKeyTime);
+            const outsideKeys = time < firstKeyTime || time > lastKeyTime;
             if (!outsideKeys && time === animation.time) {
                 return context.original_interpolate.call(this, channel, allow_expression, axis);
             }
