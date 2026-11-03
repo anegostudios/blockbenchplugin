@@ -19,11 +19,11 @@ createBlockbenchMod(
                 return context.original_interpolate.call(this, channel, allow_expression, axis);
             }
 
-            const lastFrameTime = Math.max(0, Math.round(length * fps) - 1) / fps;
-            let time = animation.loop === 'loop' ? animation.time : Math.min(animation.time, lastFrameTime);
             const times = keys.map(key => key.time);
             const firstKeyTime = Math.min(...times);
             const lastKeyTime = Math.max(...times);
+            const lastFrameTime = Math.max(Math.round(length * fps) - 1, Math.round(lastKeyTime * fps)) / fps;
+            let time = animation.loop === 'loop' ? animation.time : Math.min(animation.time, lastFrameTime);
             // Glint: pin start/end pose
             if (animation.loop !== 'loop' && is_glint_preset()) time = Math.min(Math.max(time, firstKeyTime), lastKeyTime);
             const outsideKeys = time < firstKeyTime || time > lastKeyTime;
