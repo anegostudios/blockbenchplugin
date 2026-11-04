@@ -145,7 +145,8 @@ function handleExistingTextureByName(
     name: string,
     textureLocation: string,
     content: VS_Shape,
-    match: TextureMatch
+    match: TextureMatch,
+    shape_path: string
 ): void {
     // Update textureLocation if not set
     if (!texture.textureLocation) {
@@ -165,7 +166,7 @@ function handleExistingTextureByName(
         texture.path = match.byFilename.path;
         texture.load();
     } else {
-        const texturePath = util.get_texture_location(null, textureLocation);
+        const texturePath = util.get_texture_location(shape_path, textureLocation);
         if (texturePath && texturePath.length > 0) {
             texture.path = texturePath;
             texture.load();
@@ -223,7 +224,7 @@ function handleExistingTextureByFilename(
  *
  * @param content The VS_Shape data to merge
  */
-export function handleVSTextures(content: VS_Shape) {
+export function handleVSTextures(content: VS_Shape, shape_path: string) {
     // Validate input
     if (!content || !content.textures) {
         return;
@@ -243,14 +244,14 @@ export function handleVSTextures(content: VS_Shape) {
 
         // Resolution strategy: name > location > filename > create new
         if (match.byName) {
-            handleExistingTextureByName(match.byName, name, textureLocation, content, match);
+            handleExistingTextureByName(match.byName, name, textureLocation, content, match, shape_path);
         } else if (match.byLocation) {
             handleExistingTextureByLocation(match.byLocation, name, textureLocation, content);
         } else if (match.byFilename) {
             handleExistingTextureByFilename(match.byFilename, name, textureLocation, locationFilename, content);
         } else {
             // No existing texture found, create new one
-            const texturePath = util.get_texture_location(null, textureLocation);
+            const texturePath = util.get_texture_location(shape_path, textureLocation);
             createVSAttachmentTexture(name, texturePath, textureLocation, content);
         }
     }

@@ -263,7 +263,7 @@ function isCubeElement(value: unknown): value is BBCubeElement {
  */
 export function mergeVSAttachment(content: VS_Shape, filePath?: string) {
     const elementsBefore = new Set<Group | Cube>([...Group.all, ...Cube.all]);
-    handleVSTextures(content);
+    handleVSTextures(content, filePath ?? '');
     // Attachment roots are already expressed in their step parent's local space.
     // Applying the normal block-model [-8, 0, -8] offset corrupts that transform.
     import_model(content, false, filePath, { rootOffset: [0, 0, 0] });

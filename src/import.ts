@@ -10,7 +10,7 @@ import { vsAnimationCodec } from "./animation_codec";
 import { fs } from "./util/native";
 
 
-export function im(content: VS_Shape, _path: string, asBackdrop: boolean) {
+export function im(content: VS_Shape, shape_path: string, asBackdrop: boolean) {
 
     if (!Project) {
         throw new Error("No project loaded during import");
@@ -27,7 +27,7 @@ export function im(content: VS_Shape, _path: string, asBackdrop: boolean) {
 
     // Load textures
     for (const name in content.textures) {
-        const texturePath = util.get_texture_location(null, content.textures[name]);
+        const texturePath = util.get_texture_location(shape_path, content.textures[name]);
         const texture = new Texture({ name, path: texturePath }).add().load();
         if (content.textureSizes && content.textureSizes[name]) {
             texture.uv_width = content.textureSizes[name][0];
@@ -64,7 +64,7 @@ export function im(content: VS_Shape, _path: string, asBackdrop: boolean) {
 
 
     // Build the model structure using the dedicated module
-    import_model(content, asBackdrop, _path);
+    import_model(content, asBackdrop, shape_path);
 
     // Import inline (shape-embedded) animations.
     if (content.animations) {
@@ -73,7 +73,7 @@ export function im(content: VS_Shape, _path: string, asBackdrop: boolean) {
 
     // Load referenced external animation libraries so they appear grouped by file.
     if (content.animationLibraries && content.animationLibraries.length > 0) {
-        load_animation_libraries(content.animationLibraries, _path);
+        load_animation_libraries(content.animationLibraries, shape_path);
     }
 }
 

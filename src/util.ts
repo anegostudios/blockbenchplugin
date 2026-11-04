@@ -1,4 +1,3 @@
-import * as path from "path";
 import { fs, get_game_path } from "./util/native";
 declare const THREE: typeof import('three');
 
@@ -9,22 +8,11 @@ export function is_glint_preset(): boolean {
     return Settings.get('attachment_preset') === 'glint';
 }
 
-export const get_texture_location = function (domain, rel_path) {
-
-    for (const base_mod_path of ["creative", "game", "survival"]) {
-        const f = path.posix.format({
-            root: get_game_path() + path.sep + "assets" + path.sep + base_mod_path + path.sep + "textures" + path.sep,
-            name: rel_path,
-            ext: '.png',
-        });
-        const exists = fs.existsSync(f);
-        if (exists) {
-
-            return f;
-        }
-    }
-    return "";
-};
+export function get_texture_location(shape_path: string, location: string): string {
+    const [, assets, shape_domain] = shape_path.replace(/\\/g, '/').match(/^(.*\/assets)\/([^/]+)\/shapes\//) ?? [];
+    const [domain, rel] = location.includes(':') ? location.split(':') : [shape_domain, location];
+    return [`${assets}/${domain}/textures/${rel}.png`, `${get_game_path()}/assets/${domain}/textures/${rel}.png`].find(f => fs.existsSync(f)) ?? "";
+}
 
 export function vector_equals(a: [number, number, number], b: [number, number, number]): boolean {
     for (let i = 0; i < 3; i++) {
