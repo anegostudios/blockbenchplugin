@@ -11,6 +11,7 @@ import "./property";
 
 // Mods (order matters — these must load before panels)
 import "./mods/boneAnimatorMod";
+import "./mods/animationTransformMod";
 import "./mods/formatMod";
 import "./mods/settingsMod";
 import "./mods/legacyFormatConverterMod";

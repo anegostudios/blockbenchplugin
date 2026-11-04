@@ -87,6 +87,25 @@ declare global {
     function requireNativeModule(name: 'process', options?: NativeModuleOptions): typeof import('process') | undefined;
     function requireNativeModule(name: 'path', options?: NativeModuleOptions): typeof import('path');
     function requireNativeModule(name: string, options?: NativeModuleOptions): any;
+
+    interface TransformerMoveContext {
+        axis: 'x' | 'y' | 'z';
+        axis_number: 0 | 1 | 2;
+        value: number;
+    }
+    interface TransformerModule {
+        previous_value: number;
+        initial_value: number;
+        onMove: (this: TransformerModule, context: TransformerMoveContext) => void;
+        updateGizmo: (this: TransformerModule) => boolean | void;
+    }
+    const TransformerModule: { modules: Record<string, TransformerModule> };
+}
+
+declare module 'three' {
+    interface Object3D {
+        pre_rotation?: THREE.Euler;
+    }
 }
 
 export {};
