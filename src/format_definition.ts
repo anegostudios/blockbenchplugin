@@ -61,6 +61,7 @@ export function create_format(): ModelFormat {
         paint_mode: true,
         display_mode: false, // Only some Minecraft Skin stuff it seems
         animation_mode: true,
+        molang: false,
         pose_mode: false,
         animation_controllers: false, // VS has no animation-controller concept
 
