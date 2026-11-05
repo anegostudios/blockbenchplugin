@@ -72,6 +72,9 @@ declare global {
     interface ModelFormat {
         animation_codec?: AnimationCodec;
     }
+    interface FormatOptions {
+        molang?: boolean;
+    }
 
     /**
      * Blockbench's desktop-only escape hatch to Node's require. Missing from blockbench-types,

@@ -552,7 +552,7 @@ function clone_keyframe(keyframe: VS_Keyframe): VS_Keyframe {
  * Expected format: "textures": { "slot": "path", ... }
  * Returns a Record<string, string> mapping texture codes to asset paths, or null if not a texture swap.
  */
-function parseTextureSwapScript(script: string): Record<string, string> | null {
+export function parseTextureSwapScript(script: string): Record<string, string> | null {
     try {
         // The script content is a JSON fragment like: "textures": { "mouth": "entity/mouth/*_smile" }
         // Wrap in braces to make it valid JSON

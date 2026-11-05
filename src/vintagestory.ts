@@ -5,6 +5,7 @@ import PACKAGE from "../package.json";
 import "./debug_actions";
 import "./actions";
 import "./animation_actions";
+import "./animation_textures";
 
 // Properties
 import "./property";
