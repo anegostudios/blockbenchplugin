@@ -1,3 +1,4 @@
+import "./character-api";
 import { events } from "./util/events";
 import PACKAGE from "../package.json";
 

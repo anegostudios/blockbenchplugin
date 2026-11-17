@@ -38,6 +38,13 @@ export function create_animation(vsAnimation: VS_Animation, path?: string, saved
 
     store_animation_extras(animation, vsAnimation);
 
+    import_animation_keyframes(animation, vsAnimation);
+    return animation;
+}
+
+export function import_animation_keyframes(animation: _Animation, vsAnimation: VS_Animation): void {
+    const FPS = util.fps;
+
     // Per-bone, per-channel sorted frame lists so bezier handle widths can be placed against the
     // correct segment (mirrors the engine's per-channel keyframe walk).
     const channelFrames = buildChannelFrames(vsAnimation);
@@ -93,8 +100,6 @@ export function create_animation(vsAnimation: VS_Animation, path?: string, saved
             });
         }
     });
-
-    return animation;
 }
 
 /**

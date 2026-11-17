@@ -261,15 +261,24 @@ function isCubeElement(value: unknown): value is BBCubeElement {
  * @param content The VS_Shape data to merge.
  * @param filePath The path to the file being imported, used for clothing slot inference.
  */
-export function mergeVSAttachment(content: VS_Shape, filePath?: string) {
+export function mergeVSAttachment(
+    content: VS_Shape,
+    filePath?: string,
+    options: { textures?: boolean; slot?: string } = {},
+) {
     const elementsBefore = new Set<Group | Cube>([...Group.all, ...Cube.all]);
-    handleVSTextures(content, filePath ?? '');
+    if (options.textures !== false) {
+        handleVSTextures(content, filePath ?? '');
+    }
     // Attachment roots are already expressed in their step parent's local space.
     // Applying the normal block-model [-8, 0, -8] offset corrupts that transform.
     import_model(content, false, filePath, { rootOffset: [0, 0, 0] });
 
     for (const element of [...Group.all, ...Cube.all]) {
         if (elementsBefore.has(element)) continue;
+        if (options.slot) {
+            element.clothingSlot = options.slot;
+        }
         const parentIsNew = element.parent instanceof Group && !elementsBefore.has(element.parent);
         if (!parentIsNew && element.stepParentName?.trim()) {
             element.vs_step_parent_local = true;
